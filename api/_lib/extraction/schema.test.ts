@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { extractedSDSSchema } from "./schema";
+import { extractedSDSSchema } from "./schema.js";
 
 function loadFixture(name: string): unknown {
   return JSON.parse(readFileSync(join(__dirname, "../../../tests/fixtures", name), "utf-8"));

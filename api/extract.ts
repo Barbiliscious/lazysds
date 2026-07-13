@@ -1,6 +1,8 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Anthropic from "@anthropic-ai/sdk";
-import { extractSDS } from "./_lib/extraction/extract-sds";
+// Relative imports in api/ need explicit .js extensions: these run as
+// native ES modules on Vercel ("type": "module"), where Node requires them.
+import { extractSDS } from "./_lib/extraction/extract-sds.js";
 
 /**
  * POST /api/extract

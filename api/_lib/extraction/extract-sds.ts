@@ -1,8 +1,8 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import type { ExtractedSDS } from "../../../shared/types";
-import { getAnthropicClient, EXTRACTION_MODEL } from "../anthropic";
-import { extractedSDSSchema } from "./schema";
-import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserMessage } from "./prompt";
+import type { ExtractedSDS } from "../../../shared/types.js";
+import { getAnthropicClient, EXTRACTION_MODEL } from "../anthropic.js";
+import { extractedSDSSchema } from "./schema.js";
+import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserMessage } from "./prompt.js";
 
 /**
  * Very generous cap (~75k tokens) that still fits Haiku's 200k context with

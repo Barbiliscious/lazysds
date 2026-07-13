@@ -52,7 +52,10 @@ supabase/migrations/           schema source of truth (applied to hosted project
   `null`. Nothing is written to the register without a human confirming it
   on the review screen.
 - **Imports:** `src/` may use `@/` and `@shared/` aliases. `api/` is bundled
-  separately by Vercel and must use relative imports (`../shared/...`).
+  separately by Vercel and must use relative imports (`../shared/...`)
+  ⚠ **with explicit `.js` extensions** (`./schema.js` for `schema.ts`) —
+  functions run as native ESM in production and crash with
+  ERR_MODULE_NOT_FOUND without them (`vercel dev` won't catch this).
 
 ## Access model (deliberate)
 

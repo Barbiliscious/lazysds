@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ExtractedSDS } from "../../../shared/types";
+import type { ExtractedSDS } from "../../../shared/types.js";
 
 /**
  * Zod mirror of the ExtractedSDS interface in shared/types.ts.
