@@ -12,7 +12,9 @@ acronym "SDS" — plain language and big tap targets everywhere.
 - **DB + files:** Supabase — Postgres table `sds_records`, storage bucket `sds-pdfs`
   - Hosted project: `lazysds` (ref `ijqwxgjlnvatfgduohwo`, ap-southeast-2)
 - **AI:** Anthropic API, model `claude-haiku-4-5-20251001`, called only from `api/extract.ts`
-- **Hosting:** Vercel
+- **Hosting:** Vercel — project `lazysds` on team `mullaneaa-7828s-projects`,
+  live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
+  ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.
 - **Region conventions:** Australia (GHS per Safe Work Australia, ADG classes)
 
 ## Commands

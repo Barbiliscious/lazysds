@@ -12,3 +12,5 @@ dist/
 # Editor noise
 .DS_Store
 *.local
+
+.vercel
