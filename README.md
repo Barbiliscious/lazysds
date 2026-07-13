@@ -1,1 +1,41 @@
-# lazysds
+# LazySDS
+
+Find the Safety Data Sheet for a product, extract the compliance-relevant
+fields with AI, review them as a human, and keep them in a register you can
+export to CSV/XLSX.
+
+## Local setup
+
+1. **Install:** `npm install` (Node 20+)
+2. **Env vars:** copy `.env.example` to `.env.local` and fill in the values.
+   The Supabase URL and anon key come from the Supabase dashboard
+   (Project Settings → API). Server-side keys (Anthropic etc.) are only
+   needed when running the full stack.
+3. **Run:**
+   - `npm run dev` — frontend only, fastest loop for UI work. `/api` routes
+     are not served, so extraction/search won't work.
+   - `vercel dev` — full stack (requires the [Vercel CLI](https://vercel.com/docs/cli)
+     and a linked project). Serves the Vite app *and* the `api/` functions.
+
+## Tests
+
+`npm test` runs the Vitest suite (extraction parser + source adapters, with
+fixtures in `tests/fixtures/`).
+
+## Deployment (Vercel)
+
+1. Push to the linked git repo, or run `vercel --prod`.
+2. Set environment variables in Vercel → Project → Settings → Environment
+   Variables. Every variable is documented in `.env.example`. `VITE_`-prefixed
+   vars must be present at **build** time.
+3. The database schema lives in `supabase/migrations/`. It has already been
+   applied to the hosted `lazysds` Supabase project; for a fresh project, run
+   the migrations in order in the Supabase SQL editor.
+
+## Where to change things
+
+- Export columns/headers: `shared/config/register-columns.ts`
+- Trusted SDS search domains: `shared/config/sds-domains.ts`
+- Extraction prompt/schema: `api/_lib/extraction/`
+
+More conventions and architecture notes: see `CLAUDE.md`.

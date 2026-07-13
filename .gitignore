@@ -1,0 +1,14 @@
+node_modules/
+dist/
+
+# Local env — real keys live here and in Vercel, never in git
+.env
+.env.local
+.env.*.local
+
+# Vercel CLI link data
+.vercel/
+
+# Editor noise
+.DS_Store
+*.local
