@@ -1,11 +1,13 @@
 import { Route, Routes } from "react-router-dom";
 import HomePage from "./pages/HomePage";
+import ReviewPage from "./pages/ReviewPage";
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
-      {/* Phase 2 adds /review, Phase 3 adds /register */}
+      <Route path="/review" element={<ReviewPage />} />
+      {/* Phase 3 adds /register */}
     </Routes>
   );
 }

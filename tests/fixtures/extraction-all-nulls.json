@@ -1,0 +1,15 @@
+{
+  "product_name": null,
+  "manufacturer": null,
+  "supplier": null,
+  "is_hazardous": null,
+  "dangerous_goods_class": null,
+  "un_number": null,
+  "issue_date": null,
+  "hazard_statements": [],
+  "confidence": {
+    "product_name": "low",
+    "manufacturer": "low",
+    "is_hazardous": "low"
+  }
+}
