@@ -17,10 +17,24 @@ export to CSV/XLSX.
    - `vercel dev` — full stack (requires the [Vercel CLI](https://vercel.com/docs/cli)
      and a linked project). Serves the Vite app *and* the `api/` functions.
 
+## How it works
+
+- **Have the PDF?** Home page → upload it → the AI reads it → you check the
+  fields against the document → it's saved to the register.
+- **Don't have the PDF?** `/find` → type the product name → the app opens a
+  web search in a new tab → paste the PDF's link back in and the server
+  fetches it (from trusted sites only — see `shared/config/sds-domains.ts`),
+  then the same review-and-save flow runs. Built deliberately without a
+  search API; a keyed search adapter can replace the copy-paste hop later.
+- **The register** (`/register`) lists everything saved and exports to
+  CSV or Excel. Barcode scanning is deferred until a viable
+  barcode-to-product API exists.
+
 ## Tests
 
-`npm test` runs the Vitest suite (extraction parser + source adapters, with
-fixtures in `tests/fixtures/`).
+`npm test` runs the Vitest suite. Tests live next to the code they cover
+(`*.test.ts`): the extraction schema, the export formatting/CSV escaping,
+and the trusted-URL checks.
 
 ## Deployment (Vercel)
 

@@ -80,4 +80,4 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
    a search adapter can replace the copy-paste hop later.
 5. ⏸ Barcode scanning — deferred. Camera-side scanning is free, but
    barcode → product-name lookup needs a paid API we don't have.
-6. Polish, tests, docs
+6. ✅ Polish, tests, docs
