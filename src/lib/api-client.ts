@@ -53,6 +53,17 @@ export async function extractSDS(text: string): Promise<ExtractedSDS> {
  * browser can't — manufacturers' sites don't allow cross-origin reads)
  * and hands it back as a File, ready for the normal intake pipeline.
  */
+export interface BarcodeProduct {
+  name: string;
+  brand: string | null;
+}
+
+/** Looks a barcode up in the free product databases; null = not known. */
+export async function lookupBarcode(code: string): Promise<BarcodeProduct | null> {
+  const { product } = await postJson<{ product: BarcodeProduct | null }>("/api/barcode", { code });
+  return product;
+}
+
 export async function fetchSdsPdf(url: string): Promise<File> {
   const { filename, base64 } = await postJson<{ filename: string; base64: string }>("/api/fetch-pdf", { url });
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));

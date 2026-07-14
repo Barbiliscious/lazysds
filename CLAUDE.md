@@ -78,6 +78,9 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
    tab + paste-a-PDF-link fetched by `/api/fetch-pdf` from whitelisted
    domains only. Built without a search API on purpose (none viable);
    a search adapter can replace the copy-paste hop later.
-5. ⏸ Barcode scanning — deferred. Camera-side scanning is free, but
-   barcode → product-name lookup needs a paid API we don't have.
+5. ✅ Barcode scanning (key-free): `/scan` — camera scan (zxing, lazy-loaded)
+   or typed digits → `/api/barcode` → Open Products/Food/Beauty Facts
+   (free, keyless, crowdsourced — "not found" is a normal outcome) →
+   prefills `/find`; web-search-the-barcode fallback otherwise.
+   Google Custom Search was ruled out: closed to new customers, retiring 2027.
 6. ✅ Polish, tests, docs

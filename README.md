@@ -26,9 +26,13 @@ export to CSV/XLSX.
   fetches it (from trusted sites only — see `shared/config/sds-domains.ts`),
   then the same review-and-save flow runs. Built deliberately without a
   search API; a keyed search adapter can replace the copy-paste hop later.
+- **Only have the product in hand?** `/scan` → point the camera at the
+  barcode (or type the digits printed under it) → the free Open Products /
+  Food / Beauty Facts databases turn it into a product name → straight into
+  the find flow. Those databases are crowdsourced, so "not found" is
+  normal — the fallback is a web search for the barcode number.
 - **The register** (`/register`) lists everything saved and exports to
-  CSV or Excel. Barcode scanning is deferred until a viable
-  barcode-to-product API exists.
+  CSV or Excel.
 
 ## Tests
 

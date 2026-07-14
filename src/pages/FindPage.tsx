@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { buildSdsSearchUrl } from "@shared/sds-url";
 import { fetchSdsPdf } from "@/lib/api-client";
 import { prepareReview } from "@/lib/sds-intake";
@@ -22,7 +22,9 @@ type Step =
 
 export default function FindPage() {
   const navigate = useNavigate();
-  const [productName, setProductName] = useState("");
+  // The scan page arrives here with ?product=… already worked out.
+  const [searchParams] = useSearchParams();
+  const [productName, setProductName] = useState(searchParams.get("product") ?? "");
   const [pdfLink, setPdfLink] = useState("");
   const [step, setStep] = useState<Step>({ phase: "idle" });
 
@@ -79,6 +81,13 @@ export default function FindPage() {
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
           />
+          <p className="mt-2 text-sm text-slate-500">
+            Not sure of the name?{" "}
+            <Link to="/scan" className="text-blue-600 underline">
+              Scan the product's barcode
+            </Link>{" "}
+            and we'll try to work it out.
+          </p>
           <button
             type="button"
             disabled={productName.trim().length === 0}
