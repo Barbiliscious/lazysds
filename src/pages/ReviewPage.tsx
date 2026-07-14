@@ -56,7 +56,7 @@ export default function ReviewPage() {
           .split("\n")
           .map((s) => s.trim())
           .filter(Boolean),
-        source: "upload",
+        source: pending.source,
         reviewed_by: reviewedBy.trim(),
       });
       clearPendingReview();

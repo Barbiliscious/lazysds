@@ -1,8 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { extractPdfText } from "@/lib/pdf-text";
-import { extractSDS } from "@/lib/api-client";
-import { setPendingReview } from "@/lib/pending-review";
+import { prepareReview } from "@/lib/sds-intake";
 
 type Step =
   | { phase: "idle" }
@@ -24,24 +22,8 @@ export default function HomePage() {
 
   const handleFile = useCallback(
     async (file: File) => {
-      if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-        setStep({ phase: "error", message: "That doesn't look like a PDF. The safety sheet needs to be a PDF file." });
-        return;
-      }
       try {
-        setStep({ phase: "reading-pdf" });
-        const text = await extractPdfText(file);
-        if (text.length < 50) {
-          setStep({
-            phase: "error",
-            message:
-              "We couldn't read any text in that PDF — it might be a scanned image. Try a PDF downloaded from the manufacturer's website.",
-          });
-          return;
-        }
-        setStep({ phase: "extracting" });
-        const extracted = await extractSDS(text);
-        setPendingReview({ file, text, extracted });
+        await prepareReview(file, "upload", (phase) => setStep({ phase }));
         navigate("/review");
       } catch (err) {
         setStep({
@@ -129,9 +111,11 @@ export default function HomePage() {
         </div>
       )}
 
-      <p className="text-sm text-slate-400 max-w-md text-center">
-        Don't have the PDF? Search for the product name plus &ldquo;SDS&rdquo; on the manufacturer's website.
-        Product search inside this app is coming soon.
+      <p className="text-sm text-slate-500 max-w-md text-center">
+        Don't have the PDF?{" "}
+        <Link to="/find" className="text-blue-600 underline">
+          We'll help you find it.
+        </Link>
       </p>
     </main>
   );

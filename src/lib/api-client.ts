@@ -47,3 +47,14 @@ export async function extractSDS(text: string): Promise<ExtractedSDS> {
   const { extracted } = await postJson<{ extracted: ExtractedSDS }>("/api/extract", { text });
   return extracted;
 }
+
+/**
+ * Asks /api/fetch-pdf to download an SDS PDF from a trusted site (the
+ * browser can't — manufacturers' sites don't allow cross-origin reads)
+ * and hands it back as a File, ready for the normal intake pipeline.
+ */
+export async function fetchSdsPdf(url: string): Promise<File> {
+  const { filename, base64 } = await postJson<{ filename: string; base64: string }>("/api/fetch-pdf", { url });
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  return new File([bytes], filename, { type: "application/pdf" });
+}

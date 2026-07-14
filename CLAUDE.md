@@ -74,6 +74,10 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
 1. ✅ Scaffold + CLAUDE.md + Supabase schema + hello-world deploy
 2. ✅ Flow A: upload → extract (`/api/extract`) → review screen → save
 3. ✅ Register list view + CSV/XLSX export
-4. Flow B: `findSDS()` adapter chain (PubChem → Google search → manual fallback)
-5. Barcode scanning (camera + lookup API)
+4. ✅ Flow B (key-free version): `/find` page — guided web search in a new
+   tab + paste-a-PDF-link fetched by `/api/fetch-pdf` from whitelisted
+   domains only. Built without a search API on purpose (none viable);
+   a search adapter can replace the copy-paste hop later.
+5. ⏸ Barcode scanning — deferred. Camera-side scanning is free, but
+   barcode → product-name lookup needs a paid API we don't have.
 6. Polish, tests, docs
