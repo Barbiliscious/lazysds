@@ -73,7 +73,7 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
 
 1. ✅ Scaffold + CLAUDE.md + Supabase schema + hello-world deploy
 2. ✅ Flow A: upload → extract (`/api/extract`) → review screen → save
-3. Register list view + CSV/XLSX export
+3. ✅ Register list view + CSV/XLSX export
 4. Flow B: `findSDS()` adapter chain (PubChem → Google search → manual fallback)
 5. Barcode scanning (camera + lookup API)
 6. Polish, tests, docs

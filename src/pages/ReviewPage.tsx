@@ -85,6 +85,9 @@ export default function ReviewPage() {
         >
           Add another product
         </Link>
+        <Link to="/register" className="text-blue-600 underline">
+          See the full register
+        </Link>
       </main>
     );
   }

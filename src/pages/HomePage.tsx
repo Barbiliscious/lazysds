@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { extractPdfText } from "@/lib/pdf-text";
 import { extractSDS } from "@/lib/api-client";
 import { setPendingReview } from "@/lib/pending-review";
@@ -115,6 +115,13 @@ export default function HomePage() {
           }}
         />
       </div>
+
+      <Link
+        to="/register"
+        className="rounded-xl border border-slate-300 bg-white px-6 py-4 text-lg font-semibold text-slate-700 hover:border-blue-400 hover:text-blue-700"
+      >
+        See what's already in the register
+      </Link>
 
       {step.phase === "error" && (
         <div role="alert" className="w-full max-w-md rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-800">
