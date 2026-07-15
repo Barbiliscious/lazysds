@@ -2,65 +2,72 @@ import type { SDSFieldKey } from "../types";
 
 /**
  * ═══════════════════════════════════════════════════════════════════
- *  EDIT ME — register export column order (32 columns)
+ *  EDIT ME — register export layout (the "SDS Index" spreadsheet)
  * ═══════════════════════════════════════════════════════════════════
- * This one file controls the CSV/XLSX export order and headings.
- *  - `header` is the column heading exactly as it appears in the file.
+ * A condensed, grouped view of the index — matches the Grampians example
+ * workbook. This one file controls the CSV/XLSX columns, their order, their
+ * group bands, and their headings.
+ *  - `group` is the coloured band above the column (blank = no band).
+ *  - `header` is the column heading.
  *  - `ref` is where the cell text comes from:
- *      { field: <key> }   → the extracted SDS field's value/status
- *      { record: <token> }→ a value derived in code (id, dates, admin)
- *  - Reorder entries to reorder columns; delete entries to drop columns.
- * The renderer lives in src/lib/export-register.ts.
+ *      { field: <key> }    → an extracted SDS field's value/status
+ *      { record: <token> } → a value derived in code (id, dates, admin, link)
+ *      { combined: <name> }→ several fields merged into one column
+ *  - Reorder / delete entries to change the sheet. The renderer (banner,
+ *    bands, merged Manufacturer/Supplier + PPE, hyperlink) lives in
+ *    src/lib/export-register.ts.
+ *
+ * Note: this condensed view intentionally omits some extracted columns
+ * (Signal Word, Poisons Schedule, Transport UN/Class/Group, Incompatibilities,
+ * Dilution/Use Condition, Currency Flag). They are still extracted, shown on
+ * the approval screen, and stored — add a row here to surface any of them.
  */
 
 export type RecordColumn =
-  | "record_id" // 1
-  | "sds_link" // 6
-  | "review_date" // 8
-  | "currency_flag" // 9
-  | "extraction_status" // 29
-  | "review_reasons" // 30
-  | "verified_by" // 31
-  | "verified_at"; // 32
+  | "record_id"
+  | "review_date"
+  | "extraction_status"
+  | "review_reasons"
+  | "verified_by"
+  | "verified_at"
+  | "sds_link";
 
-export type ColumnRef = { field: SDSFieldKey } | { record: RecordColumn };
+export type CombinedColumn = "manufacturer_supplier" | "ppe";
+
+export type ColumnRef =
+  | { field: SDSFieldKey }
+  | { record: RecordColumn }
+  | { combined: CombinedColumn };
 
 export interface RegisterColumn {
+  group: string;
   header: string;
   ref: ColumnRef;
 }
 
 export const REGISTER_COLUMNS: RegisterColumn[] = [
-  { header: "SDS Record ID", ref: { record: "record_id" } },
-  { header: "Product Name", ref: { field: "product_name" } },
-  { header: "Manufacturer", ref: { field: "manufacturer" } },
-  { header: "Supplier / Importer", ref: { field: "supplier_importer" } },
-  { header: "Product Codes", ref: { field: "product_codes" } },
-  { header: "SDS Link", ref: { record: "sds_link" } },
-  { header: "Issue / Revision Date", ref: { field: "issue_date" } },
-  { header: "Review Date", ref: { record: "review_date" } },
-  { header: "Currency Flag", ref: { record: "currency_flag" } },
-  { header: "Hazardous Chemical?", ref: { field: "hazardous_chemical" } },
-  { header: "Dangerous Goods?", ref: { field: "dangerous_goods" } },
-  { header: "Signal Word", ref: { field: "signal_word" } },
-  { header: "Pictograms", ref: { field: "pictograms" } },
-  { header: "Hazard Statements", ref: { field: "hazard_statements" } },
-  { header: "Poisons Schedule", ref: { field: "poisons_schedule" } },
-  { header: "UN Number", ref: { field: "un_number" } },
-  { header: "DG Class / Subsidiary Risk", ref: { field: "dg_class" } },
-  { header: "Packing Group", ref: { field: "packing_group" } },
-  { header: "PPE - Eyes / Face", ref: { field: "ppe_eyes_face" } },
-  { header: "PPE - Hands", ref: { field: "ppe_hands" } },
-  { header: "PPE - Respiratory", ref: { field: "ppe_respiratory" } },
-  { header: "PPE - Body", ref: { field: "ppe_body" } },
-  { header: "First Aid - Key Points", ref: { field: "first_aid" } },
-  { header: "Spill - Key Points", ref: { field: "spill" } },
-  { header: "Storage - Key Points", ref: { field: "storage" } },
-  { header: "Incompatibilities", ref: { field: "incompatibilities" } },
-  { header: "Fire - Extinguishing Media", ref: { field: "fire_media" } },
-  { header: "Dilution / Use Condition", ref: { field: "dilution_condition" } },
-  { header: "Extraction Status", ref: { record: "extraction_status" } },
-  { header: "Review Reasons", ref: { record: "review_reasons" } },
-  { header: "Verified By", ref: { record: "verified_by" } },
-  { header: "Verified Date", ref: { record: "verified_at" } },
+  { group: "IDENTIFICATION", header: "SDS Record ID", ref: { record: "record_id" } },
+  { group: "IDENTIFICATION", header: "Product Name", ref: { field: "product_name" } },
+  { group: "IDENTIFICATION", header: "Manufacturer / Supplier / Importer", ref: { combined: "manufacturer_supplier" } },
+  { group: "IDENTIFICATION", header: "Product Codes", ref: { field: "product_codes" } },
+  { group: "DOCUMENT CONTROL", header: "Issue / Revision Date", ref: { field: "issue_date" } },
+  { group: "DOCUMENT CONTROL", header: "Review Date", ref: { record: "review_date" } },
+  { group: "HAZARD AT A GLANCE", header: "Hazardous Chemical?", ref: { field: "hazardous_chemical" } },
+  { group: "HAZARD AT A GLANCE", header: "Dangerous Goods?", ref: { field: "dangerous_goods" } },
+  { group: "HAZARD AT A GLANCE", header: "Pictograms", ref: { field: "pictograms" } },
+  { group: "HAZARD AT A GLANCE", header: "Hazard Statements", ref: { field: "hazard_statements" } },
+  { group: "QUICK RESPONSE", header: "PPE - Eyes / Face / Hands / Respiratory / Body", ref: { combined: "ppe" } },
+  { group: "QUICK RESPONSE", header: "First Aid - Key Points", ref: { field: "first_aid" } },
+  { group: "QUICK RESPONSE", header: "Spill - Key Points", ref: { field: "spill" } },
+  { group: "QUICK RESPONSE", header: "Storage - Key Points", ref: { field: "storage" } },
+  { group: "QUICK RESPONSE", header: "Fire - Extinguishing Media", ref: { field: "fire_media" } },
+  { group: "REGISTER ADMIN", header: "Extraction Status", ref: { record: "extraction_status" } },
+  { group: "REGISTER ADMIN", header: "Review Reasons", ref: { record: "review_reasons" } },
+  { group: "REGISTER ADMIN", header: "Verified By", ref: { record: "verified_by" } },
+  { group: "REGISTER ADMIN", header: "Verified Date", ref: { record: "verified_at" } },
+  { group: "", header: "SDS Link", ref: { record: "sds_link" } },
 ];
+
+/** The mandatory notice, printed as the banner row of the export. */
+export const QUICK_REFERENCE_BANNER =
+  "QUICK REFERENCE ONLY - This index does not replace the manufacturer's Safety Data Sheet or a workplace risk assessment. Open the linked SDS for complete instructions. If any information differs, follow the source SDS and report the discrepancy for review.";

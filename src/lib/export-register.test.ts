@@ -41,33 +41,49 @@ describe("cellText", () => {
   it("renders a stated field's value and a not-stated field's status", () => {
     const r = makeRecord({ product_name: stated("Mortein Outdoor") });
     expect(cellText(r, { field: "product_name" })).toBe("Mortein Outdoor");
-    expect(cellText(r, { field: "manufacturer" })).toBe("NOT STATED");
+    expect(cellText(r, { field: "hazardous_chemical" })).toBe("NOT STATED");
   });
+
+  it("combines manufacturer and supplier, de-duplicating when identical", () => {
+    const r1 = makeRecord({ manufacturer: stated("Reckitt"), supplier_importer: stated("Bunnings") });
+    expect(cellText(r1, { combined: "manufacturer_supplier" })).toBe("Reckitt / Bunnings");
+    const r2 = makeRecord({ manufacturer: stated("Reckitt"), supplier_importer: stated("Reckitt") });
+    expect(cellText(r2, { combined: "manufacturer_supplier" })).toBe("Reckitt");
+  });
+
+  it("combines the present PPE sub-fields, skipping not-stated ones", () => {
+    const r = makeRecord({
+      ppe_eyes_face: stated("REQUIRED: Splash goggles."),
+      ppe_hands: stated("REQUIRED: Nitrile gloves."),
+    });
+    expect(cellText(r, { combined: "ppe" })).toBe("Eyes / Face - REQUIRED: Splash goggles.\nHands - REQUIRED: Nitrile gloves.");
+    expect(cellText(makeRecord(), { combined: "ppe" })).toBe("NOT STATED");
+  });
+
   it("renders record-derived columns", () => {
-    const r = makeRecord({}, { currency_flag: "POSSIBLY_OUTDATED" });
+    const r = makeRecord();
     expect(cellText(r, { record: "record_id" })).toBe("RECKITT-MORTEIN-2024-03-12");
     expect(cellText(r, { record: "sds_link" })).toBe("https://example.com/sds.pdf");
-    expect(cellText(r, { record: "currency_flag" })).toBe("POSSIBLY OUTDATED - OBTAIN CURRENT SDS");
     expect(cellText(r, { record: "verified_at" })).toBe("2026-07-14");
-  });
-  it("renders the controlled N/A-unclear status verbatim", () => {
-    const r = makeRecord({ poisons_schedule: { value: null, status: "NA_UNCLEAR", excerpt: null, location: null } });
-    expect(cellText(r, { field: "poisons_schedule" })).toBe("N/A - MEANING UNCLEAR - MANUAL REVIEW REQUIRED");
   });
 });
 
 describe("registerToCsv", () => {
-  it("has all 32 configured columns in the header", () => {
+  it("has the 20 grouped columns in the header, SDS Link last", () => {
     const header = (registerToCsv([]).split("\r\n")[0] ?? "").split(",");
-    expect(header).toHaveLength(32);
+    expect(header).toHaveLength(20);
     expect(header[0]).toBe("SDS Record ID");
-    expect(header).toContain("Dilution / Use Condition");
-    expect(header[header.length - 1]).toBe("Verified Date");
+    expect(header).toContain("Manufacturer / Supplier / Importer");
+    expect(header[header.length - 1]).toBe("SDS Link");
   });
-  it("quotes values containing commas, quotes or newlines", () => {
-    const csv = registerToCsv([makeRecord({ product_name: stated('Cleaner, "Heavy Duty"') })]);
-    expect(csv).toContain('"Cleaner, ""Heavy Duty"""');
+
+  it("quotes cells containing commas, quotes or newlines (combined PPE)", () => {
+    const csv = registerToCsv([
+      makeRecord({ ppe_eyes_face: stated("REQUIRED: goggles"), ppe_hands: stated("REQUIRED: gloves") }),
+    ]);
+    expect(csv).toContain('"Eyes / Face - REQUIRED: goggles\nHands - REQUIRED: gloves"');
   });
+
   it("produces one CRLF-terminated line per record plus the header", () => {
     const csv = registerToCsv([makeRecord(), makeRecord()]);
     expect(csv.endsWith("\r\n")).toBe(true);
