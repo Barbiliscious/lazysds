@@ -86,11 +86,10 @@ export interface FieldSpec {
   guidance: string;
 }
 
-/** The 25 SDS-derived fields, in column order. */
+/** The 24 SDS-derived fields, in column order. */
 export const FIELD_SPECS: FieldSpec[] = [
   { key: "product_name", column: 2, header: "Product Name", guidance: "Exact, as printed. Never a nickname." },
-  { key: "manufacturer", column: 3, header: "Manufacturer", guidance: "The maker." },
-  { key: "supplier_importer", column: 4, header: "Supplier / Importer", guidance: "Often a different company from the manufacturer." },
+  { key: "manufacturer_supplier_importer", column: 3, header: "Manufacturer / Supplier / Importer", guidance: "From Section 1. Return one organisation only: whichever manufacturer, supplier or importer appears first in the document's reading order. Do not combine organisation names." },
   { key: "product_codes", column: 5, header: "Product Codes", guidance: "Comma-separated if the SDS covers several." },
   { key: "issue_date", column: 7, header: "Issue Date", guidance: "Current SDS date. Use the most recent date labelled issue, issued, revised or revision. YYYY-MM-DD, or YYYY-MM if only month given, or YYYY. The print date is NOT the issue date. Never invent a day." },
   { key: "review_date_stated", column: 8, header: "Review Date", guidance: "ONLY if the SDS states a review-by date. If it doesn't, status NOT_STATED (the app calculates Issue Date + 5 years itself)." },

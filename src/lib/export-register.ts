@@ -17,7 +17,7 @@ import type { SDSField, SDSIndexRecord } from "@shared/types";
  * order, and group bands are driven by REGISTER_COLUMNS
  * (shared/config/register-columns.ts) - edit that file, not this one. The
  * XLSX matches the Grampians example workbook: a banner row, navy group
- * bands, merged Manufacturer/Supplier and PPE columns, and a hyperlinked
+ * bands, a merged PPE column, and a hyperlinked
  * SDS Link. CSV is the same columns, flat.
  */
 
@@ -36,17 +36,6 @@ function ppeLines(record: SDSIndexRecord): { label: string; text: string }[] {
   });
 }
 
-/** The combined "Manufacturer / Supplier / Importer" text. */
-function manufacturerSupplier(record: SDSIndexRecord): string {
-  const parts = [record.extracted.manufacturer.value, record.extracted.supplier_importer.value].filter(
-    (v): v is string => Boolean(v),
-  );
-  const unique = [...new Set(parts)];
-  return unique.length > 0
-    ? normaliseDisplayDashes(unique.join(" / "))
-    : fieldCellText(record.extracted.manufacturer);
-}
-
 /** One cell's plain text for a given column - used by CSV and as a fallback. */
 export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
   if ("field" in ref) {
@@ -55,7 +44,6 @@ export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
       : fieldCellText(record.extracted[ref.field]);
   }
   if ("combined" in ref) {
-    if (ref.combined === "manufacturer_supplier") return manufacturerSupplier(record);
     const lines = ppeLines(record);
     return lines.length > 0 ? lines.map((l) => `${l.label} - ${l.text}`).join("\n") : "NOT STATED";
   }

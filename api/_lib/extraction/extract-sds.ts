@@ -10,7 +10,7 @@ import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserMessage } from "./prompt.j
  */
 const MAX_INPUT_CHARS = 300_000;
 
-/** The output is 25 fields x {value,status,excerpt,location} + reasons. */
+/** The output is 24 fields x {value,status,excerpt,location} + reasons. */
 const MAX_OUTPUT_TOKENS = 12_000;
 
 const MAX_ATTEMPTS = 2;

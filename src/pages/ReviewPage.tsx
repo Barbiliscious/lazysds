@@ -15,6 +15,8 @@ import {
 import { computeCurrencyFlag, parseSdsDate, resolveReviewDate } from "@shared/sds-dates";
 import { getPendingReview, clearPendingReview } from "@/lib/pending-review";
 import { saveReviewedRecord } from "@/lib/save-record";
+import { firstSdsPage } from "@/lib/sds-page-locations";
+import PdfReviewPages from "@/components/PdfReviewPages";
 import QuickReferenceNotice from "@/components/QuickReferenceNotice";
 
 /**
@@ -47,8 +49,8 @@ const LONG_FIELDS = new Set<SDSFieldKey>([
 ]);
 
 const SECTIONS: { title: string; keys: SDSFieldKey[] }[] = [
-  { title: "Identification", keys: ["product_name", "manufacturer", "supplier_importer", "product_codes"] },
-  { title: "Dates", keys: ["issue_date"] },
+  { title: "Identification", keys: ["product_name", "manufacturer_supplier_importer", "product_codes"] },
+  { title: "Dates", keys: ["issue_date", "review_date_stated"] },
   {
     title: "Hazard at a glance",
     keys: ["hazardous_chemical", "dangerous_goods", "signal_word", "pictograms", "hazard_statements", "poisons_schedule"],
@@ -68,6 +70,7 @@ export default function ReviewPage() {
   const [fields, setFields] = useState<ExtractedIndexRow | null>(pending?.extracted ?? null);
   const [reviewedBy, setReviewedBy] = useState("");
   const [saveState, setSaveState] = useState<SaveState>({ phase: "editing" });
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
 
   // A refresh loses the in-memory hand-off - go back to the start.
   useEffect(() => {
@@ -131,6 +134,81 @@ export default function ReviewPage() {
       return { ...current, pictograms };
     });
 
+  // Put each field beside the first PDF page cited by the AI. A calculated
+  // Review Date stays with the Issue Date because that is its source.
+  const citedPageForField = (key: SDSFieldKey): number | null => {
+    const citedPage = firstSdsPage(pending.extracted[key].location);
+    if (citedPage) return citedPage;
+    if (key === "review_date_stated" && currency?.calculated) {
+      return firstSdsPage(pending.extracted.issue_date.location);
+    }
+    return null;
+  };
+
+  const renderReviewField = (key: SDSFieldKey) => {
+    if (key === "pictograms") {
+      return (
+        <PictogramField
+          field={fields.pictograms}
+          original={pending.extracted.pictograms}
+          onChange={setPictograms}
+        />
+      );
+    }
+
+    if (key === "review_date_stated" && currency) {
+      return (
+        <ReviewDateField
+          field={fields.review_date_stated}
+          original={pending.extracted.review_date_stated}
+          resolvedDate={currency.reviewDate}
+          calculated={currency.calculated}
+          onChange={(text) => editField("review_date_stated", text)}
+        />
+      );
+    }
+
+    return (
+      <FieldRow
+        fieldKey={key}
+        field={fields[key]}
+        original={pending.extracted[key]}
+        onChange={(text) => editField(key, text)}
+      />
+    );
+  };
+
+  const renderPageReview = (pageNumber: number) => {
+    const pageSections = SECTIONS.map((section) => ({
+      ...section,
+      keys: section.keys.filter((key) => citedPageForField(key) === pageNumber),
+    })).filter((section) => section.keys.length > 0);
+
+    if (pageSections.length === 0) {
+      return (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          No AI values cite this page.
+        </div>
+      );
+    }
+
+    return pageSections.map((section) => (
+      <section key={section.title}>
+        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">{section.title}</h2>
+        <div className="flex flex-col gap-4">
+          {section.keys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
+        </div>
+      </section>
+    ));
+  };
+
+  const uncitedKeys = pdfPageCount === null
+    ? []
+    : SECTIONS.flatMap((section) => section.keys).filter((key) => {
+        const page = citedPageForField(key);
+        return page === null || page > pdfPageCount;
+      });
+
   async function handleSave() {
     if (!pending || !fields || !canSave) return;
     setSaveState({ phase: "saving" });
@@ -164,12 +242,12 @@ export default function ReviewPage() {
 
   return (
     <main className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-6xl p-4 lg:p-6">
+      <div className="mx-auto max-w-[1500px] p-4 lg:p-6">
         <header className="mb-4">
           <h1 className="text-2xl font-bold text-slate-800">Check the details</h1>
           <p className="text-slate-600">
-            Each value below sits next to the exact sentence the AI read it from. <strong>Compare them against
-            the PDF</strong> and fix anything wrong before you confirm.
+            Scroll through the full PDF pages. Each AI value sits beside the first page it came from. <strong>Compare
+            every value against the PDF</strong> and fix anything wrong before you confirm.
           </p>
         </header>
 
@@ -177,88 +255,81 @@ export default function ReviewPage() {
 
         <VerdictBanner status={EXTRACTION_STATUS_DISPLAY[fields.extraction_status]} reasons={fields.review_reasons} incomplete={incomplete} />
 
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* PDF side */}
-          <section aria-label="The source PDF" className="lg:sticky lg:top-4 self-start">
-            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-              {pdfUrl && <iframe title="Source safety data sheet" src={pdfUrl} className="w-full h-[50vh] lg:h-[80vh]" />}
-            </div>
-            {pdfUrl && (
-              <a href={pdfUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-sm text-blue-600 underline">
-                Open the PDF in a new tab
-              </a>
-            )}
-            {currency && (
-              <p className="mt-2 text-sm text-slate-600">
-                Document currency: <strong>{CURRENCY_DISPLAY[currency.flag]}</strong>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 text-sm">
+          {pdfUrl && (
+            <a href={pdfUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+              Open the PDF in a new tab
+            </a>
+          )}
+          {currency && (
+            <p className="text-slate-600">
+              Document currency: <strong>{CURRENCY_DISPLAY[currency.flag]}</strong>
+            </p>
+          )}
+        </div>
+
+        <PdfReviewPages
+          file={pending.file}
+          onPageCount={setPdfPageCount}
+          renderReview={(pageNumber) => renderPageReview(pageNumber)}
+        />
+
+        {uncitedKeys.length > 0 && (
+          <div className="mt-10 grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <div className="hidden lg:block" aria-hidden />
+            <section aria-label="Values needing manual page checking" className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+              <h2 className="text-lg font-bold text-amber-900">Needs checking</h2>
+              <p className="mb-4 text-sm text-amber-800">
+                These values did not include a usable PDF page. Check them against the visible pages before saving.
               </p>
-            )}
-          </section>
-
-          {/* Fields side */}
-          <section aria-label="Extracted values" className="flex flex-col gap-6">
-            {SECTIONS.map((sec) => (
-              <div key={sec.title}>
-                <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">{sec.title}</h2>
-                <div className="flex flex-col gap-4">
-                  {sec.keys.map((key) => key === "pictograms" ? (
-                    <PictogramField
-                      key={key}
-                      field={fields.pictograms}
-                      original={pending.extracted.pictograms}
-                      onChange={setPictograms}
-                    />
-                  ) : (
-                    <FieldRow
-                      key={key}
-                      fieldKey={key}
-                      field={fields[key]}
-                      original={pending.extracted[key]}
-                      onChange={(text) => editField(key, text)}
-                    />
-                  ))}
-                  {sec.title === "Dates" && currency && (
-                    <ReviewDateField
-                      field={fields.review_date_stated}
-                      original={pending.extracted.review_date_stated}
-                      resolvedDate={currency.reviewDate}
-                      calculated={currency.calculated}
-                      onChange={(text) => editField("review_date_stated", text)}
-                    />
-                  )}
-                </div>
+              <div className="flex flex-col gap-6">
+                {SECTIONS.map((section) => {
+                  const keys = section.keys.filter((key) => uncitedKeys.includes(key));
+                  if (keys.length === 0) return null;
+                  return (
+                    <div key={section.title}>
+                      <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-amber-800">{section.title}</h3>
+                      <div className="flex flex-col gap-4">
+                        {keys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            </section>
+          </div>
+        )}
 
-            <div className="rounded-lg bg-white border border-slate-200 p-4">
-              <label className="block font-medium text-slate-700" htmlFor="reviewed-by">
-                Your name or initials <span className="text-red-600">*</span>
-              </label>
-              <p className="text-sm text-slate-500">Recorded as the person who checked and confirmed this entry.</p>
-              <input
-                id="reviewed-by"
-                className="mt-2 w-full rounded-lg border border-slate-300 p-3 text-lg"
-                value={reviewedBy}
-                onChange={(e) => setReviewedBy(e.target.value)}
-                placeholder="e.g. AM"
-              />
+        <div className="mt-10 grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <div className="hidden lg:block" aria-hidden />
+          <section aria-label="Confirm the reviewed record" className="rounded-lg border border-slate-200 bg-white p-4">
+            <label className="block font-medium text-slate-700" htmlFor="reviewed-by">
+              Your name or initials <span className="text-red-600">*</span>
+            </label>
+            <p className="text-sm text-slate-500">Recorded as the person who checked and confirmed this entry.</p>
+            <input
+              id="reviewed-by"
+              className="mt-2 w-full rounded-lg border border-slate-300 p-3 text-lg"
+              value={reviewedBy}
+              onChange={(e) => setReviewedBy(e.target.value)}
+              placeholder="e.g. AM"
+            />
 
-              {saveState.phase === "error" && (
-                <div role="alert" className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-red-800">
-                  {saveState.message}
-                </div>
-              )}
+            {saveState.phase === "error" && (
+              <div role="alert" className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+                {saveState.message}
+              </div>
+            )}
 
-              <button
-                type="button"
-                disabled={!canSave}
-                onClick={() => void handleSave()}
-                className="mt-4 w-full rounded-xl bg-blue-600 px-6 py-4 text-lg font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300"
-              >
-                {saveState.phase === "saving" ? "Saving…" : "Looks right - add to register"}
-              </button>
-              <Link to="/" className="mt-3 block text-center text-slate-500 underline">Cancel and start again</Link>
-            </div>
+            <button
+              type="button"
+              disabled={!canSave}
+              onClick={() => void handleSave()}
+              className="mt-4 w-full rounded-xl bg-blue-600 px-6 py-4 text-lg font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300"
+            >
+              {saveState.phase === "saving" ? "Saving..." : "Looks right - add to register"}
+            </button>
+            <Link to="/" className="mt-3 block text-center text-slate-500 underline">Cancel and start again</Link>
           </section>
         </div>
       </div>

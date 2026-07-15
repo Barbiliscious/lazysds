@@ -12,7 +12,7 @@ create table public.sds_index (
 
   record_id text not null,          -- col 1: SUPPLIER-PRODUCT-ISSUEDATE
   pdf_url text not null,            -- col 6: the link to the stored SDS PDF
-  extracted jsonb not null,        -- the 25 fields-with-evidence + verdict
+  extracted jsonb not null,        -- the 24 fields-with-evidence + verdict
 
   review_date text,                -- col 8: stated review-by date, or Issue + 5y
   review_date_calculated boolean not null default false,

@@ -40,7 +40,7 @@ export default function RegisterPage() {
     const q = query.trim().toLowerCase();
     if (!q) return records;
     return records.filter((r) =>
-      [r.extracted.product_name.value, r.extracted.manufacturer.value, r.extracted.supplier_importer.value]
+      [r.extracted.product_name.value, r.extracted.manufacturer_supplier_importer.value]
         .some((v) => v?.toLowerCase().includes(q)),
     );
   }, [records, query]);
@@ -153,8 +153,7 @@ export default function RegisterPage() {
 
 function RecordCard({ record }: { record: SDSIndexRecord }) {
   const e = record.extracted;
-  const manufacturer = e.manufacturer.value;
-  const supplier = e.supplier_importer.value;
+  const organisation = e.manufacturer_supplier_importer.value;
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -164,9 +163,7 @@ function RecordCard({ record }: { record: SDSIndexRecord }) {
         <HazardBadge field={e.hazardous_chemical} />
       </div>
 
-      {(manufacturer || supplier) && (
-        <p className="mt-0.5 text-slate-600">{[manufacturer, supplier].filter(Boolean).join(" · ")}</p>
-      )}
+      {organisation && <p className="mt-0.5 text-slate-600">{organisation}</p>}
 
       <div className="mt-2 flex flex-wrap gap-1.5">
         <DgBadge field={e.dangerous_goods} />

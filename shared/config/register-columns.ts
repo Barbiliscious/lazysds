@@ -14,7 +14,7 @@ import type { SDSFieldKey } from "../types";
  *      { record: <token> } → a value derived in code (id, dates, admin, link)
  *      { combined: <name> }→ several fields merged into one column
  *  - Reorder / delete entries to change the sheet. The renderer (banner,
- *    bands, merged Manufacturer/Supplier + PPE, hyperlink) lives in
+ *    bands, merged PPE, and hyperlink) lives in
  *    src/lib/export-register.ts.
  *
  * Note: this condensed view intentionally omits some extracted columns
@@ -32,7 +32,7 @@ export type RecordColumn =
   | "verified_at"
   | "sds_link";
 
-export type CombinedColumn = "manufacturer_supplier" | "ppe";
+export type CombinedColumn = "ppe";
 
 export type ColumnRef =
   | { field: SDSFieldKey }
@@ -48,7 +48,7 @@ export interface RegisterColumn {
 export const REGISTER_COLUMNS: RegisterColumn[] = [
   { group: "IDENTIFICATION", header: "SDS Record ID", ref: { record: "record_id" } },
   { group: "IDENTIFICATION", header: "Product Name", ref: { field: "product_name" } },
-  { group: "IDENTIFICATION", header: "Manufacturer / Supplier / Importer", ref: { combined: "manufacturer_supplier" } },
+  { group: "IDENTIFICATION", header: "Manufacturer / Supplier / Importer", ref: { field: "manufacturer_supplier_importer" } },
   { group: "IDENTIFICATION", header: "Product Codes", ref: { field: "product_codes" } },
   { group: "DOCUMENT CONTROL", header: "Issue Date", ref: { field: "issue_date" } },
   { group: "DOCUMENT CONTROL", header: "Review Date", ref: { record: "review_date" } },

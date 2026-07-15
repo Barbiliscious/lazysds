@@ -3,7 +3,7 @@ import type { ExtractedIndexRow, SDSField, SDSFieldKey, SDSIndexRecord } from "@
 import { buildRegisterWorkbook, cellText, registerToCsv } from "./export-register";
 
 const FIELD_KEYS: SDSFieldKey[] = [
-  "product_name", "manufacturer", "supplier_importer", "product_codes", "issue_date",
+  "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
   "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
   "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
   "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
@@ -54,11 +54,9 @@ describe("cellText", () => {
     expect(cellText(r, { field: "hazard_statements" })).toBe("H318 - Causes serious eye damage - keep protected");
   });
 
-  it("combines manufacturer and supplier, de-duplicating when identical", () => {
-    const r1 = makeRecord({ manufacturer: stated("Reckitt"), supplier_importer: stated("Bunnings") });
-    expect(cellText(r1, { combined: "manufacturer_supplier" })).toBe("Reckitt / Bunnings");
-    const r2 = makeRecord({ manufacturer: stated("Reckitt"), supplier_importer: stated("Reckitt") });
-    expect(cellText(r2, { combined: "manufacturer_supplier" })).toBe("Reckitt");
+  it("renders the single manufacturer, supplier or importer field", () => {
+    const record = makeRecord({ manufacturer_supplier_importer: stated("Reckitt") });
+    expect(cellText(record, { field: "manufacturer_supplier_importer" })).toBe("Reckitt");
   });
 
   it("combines the present PPE sub-fields, skipping not-stated ones", () => {

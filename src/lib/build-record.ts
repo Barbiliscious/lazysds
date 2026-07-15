@@ -18,7 +18,7 @@ export function buildRecord(
   const statedReview =
     extracted.review_date_stated.status === "STATED" ? extracted.review_date_stated.value : null;
   const product = extracted.product_name.value;
-  const supplier = extracted.supplier_importer.value ?? extracted.manufacturer.value;
+  const supplier = extracted.manufacturer_supplier_importer.value;
 
   const { date: reviewDate, calculated } = resolveReviewDate(issue, statedReview);
 

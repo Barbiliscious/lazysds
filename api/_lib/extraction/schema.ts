@@ -51,8 +51,7 @@ export const pictogramField = sdsField.extend({
 
 export const extractedSDSSchema = z.object({
   product_name: sdsField,
-  manufacturer: sdsField,
-  supplier_importer: sdsField,
+  manufacturer_supplier_importer: sdsField,
   product_codes: sdsField,
   issue_date: sdsField,
   review_date_stated: sdsField,

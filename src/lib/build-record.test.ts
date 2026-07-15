@@ -3,7 +3,7 @@ import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "@shared/types";
 import { buildRecord } from "./build-record";
 
 const FIELD_KEYS: SDSFieldKey[] = [
-  "product_name", "manufacturer", "supplier_importer", "product_codes", "issue_date",
+  "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
   "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
   "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
   "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
@@ -23,7 +23,7 @@ describe("buildRecord", () => {
   it("derives record id, calculated review date, and currency from the SDS dates", () => {
     const row = makeRow({
       product_name: stated("Mortein Outdoor"),
-      supplier_importer: stated("Bunnings"),
+      manufacturer_supplier_importer: stated("Bunnings"),
       issue_date: stated("2024-03-12"),
     });
     const rec = buildRecord(row, "https://x/sds.pdf", "upload", "AM", now);
@@ -46,8 +46,8 @@ describe("buildRecord", () => {
     expect(rec.review_date_calculated).toBe(false);
   });
 
-  it("falls back to the manufacturer for the record id when no supplier is stated", () => {
-    const row = makeRow({ manufacturer: stated("Reckitt"), product_name: stated("Glen 20"), issue_date: stated("2025") });
+  it("uses the first stated organisation for the record id", () => {
+    const row = makeRow({ manufacturer_supplier_importer: stated("Reckitt"), product_name: stated("Glen 20"), issue_date: stated("2025") });
     expect(buildRecord(row, "u", "upload", "AM", now).record_id).toBe("RECKITT-GLEN-20-2025");
   });
 });

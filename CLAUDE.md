@@ -15,7 +15,7 @@ acronym "SDS" — plain language and big tap targets everywhere.
   - Hosted project: `lazysds` (ref `ijqwxgjlnvatfgduohwo`, ap-southeast-2)
 - **AI:** Anthropic API, model `claude-sonnet-5`, called only from
   `api/extract.ts`. Extraction follows the Grampians Community Health
-  quick-reference standard (v1.1): one row per SDS, 25 SDS-derived fields
+  quick-reference standard (v1.1): one row per SDS, 24 SDS-derived fields
   each carrying a verbatim source excerpt + location, controlled statuses
   (never guess), deterministic dates/currency computed in code not by the AI.
 - **Hosting:** Vercel — project `lazysds` on team `mullaneaa-7828s-projects`,

@@ -49,11 +49,10 @@ export type ExtractionStatus =
   | "MANUAL_REVIEW_REQUIRED"
   | "INCOMPLETE_SOURCE";
 
-/** The 25 SDS-derived fields the AI reads, each with its evidence. */
+/** The 24 SDS-derived fields the AI reads, each with its evidence. */
 export type SDSFieldKey =
   | "product_name"
-  | "manufacturer"
-  | "supplier_importer"
+  | "manufacturer_supplier_importer"
   | "product_codes"
   | "issue_date"
   | "review_date_stated"
