@@ -6,7 +6,11 @@ import Anthropic from "@anthropic-ai/sdk";
  * must never be imported from src/.
  */
 
-export const EXTRACTION_MODEL = "claude-haiku-4-5-20251001";
+// Sonnet 5, not Haiku: the standard demands verbatim excerpts, controlled
+// statuses, and cross-section checks — careful reading Haiku isn't reliable
+// at. Extraction volume is low (a worker adds a product now and then), so
+// the per-SDS cost is small. Drop back to Haiku here to save cost if needed.
+export const EXTRACTION_MODEL = "claude-sonnet-5";
 
 let client: Anthropic | null = null;
 

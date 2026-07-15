@@ -1,4 +1,4 @@
-import type { ExtractedSDS } from "@shared/types";
+import type { ExtractedIndexRow } from "@shared/types";
 
 /**
  * The only place the frontend talks to /api routes. Components call these
@@ -42,9 +42,12 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return payload as T;
 }
 
-/** Sends SDS text to /api/extract and returns the structured fields. */
-export async function extractSDS(text: string): Promise<ExtractedSDS> {
-  const { extracted } = await postJson<{ extracted: ExtractedSDS }>("/api/extract", { text });
+/** Sends page-tagged SDS text to /api/extract and returns the index row. */
+export async function extractSDS(text: string, pageCount: number): Promise<ExtractedIndexRow> {
+  const { extracted } = await postJson<{ extracted: ExtractedIndexRow }>("/api/extract", {
+    text,
+    pageCount,
+  });
   return extracted;
 }
 

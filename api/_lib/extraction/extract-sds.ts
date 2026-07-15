@@ -1,30 +1,36 @@
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import type { ExtractedSDS } from "../../../shared/types.js";
+import type { ExtractedIndexRow } from "../../../shared/types.js";
 import { getAnthropicClient, EXTRACTION_MODEL } from "../anthropic.js";
 import { extractedSDSSchema } from "./schema.js";
 import { EXTRACTION_SYSTEM_PROMPT, buildExtractionUserMessage } from "./prompt.js";
 
 /**
- * Very generous cap (~75k tokens) that still fits Haiku's 200k context with
- * room to spare. A typical SDS is 5-20 pages; anything past this length is
- * boilerplate we can safely drop.
+ * Very generous cap that still fits the model's context with room to spare.
+ * A typical SDS is 5-20 pages; anything past this is boilerplate we drop.
  */
 const MAX_INPUT_CHARS = 300_000;
 
-/** Output is a small fixed-shape JSON object; 2000 tokens is ample. */
-const MAX_OUTPUT_TOKENS = 2_000;
+/** The output is 25 fields x {value,status,excerpt,location} + reasons. */
+const MAX_OUTPUT_TOKENS = 12_000;
 
 const MAX_ATTEMPTS = 2;
 
 /**
- * Runs the extraction against Claude Haiku with a structured-output format:
- * the API constrains the response to extractedSDSSchema server-side, so the
- * model cannot return prose, fences, or a malformed shape. parsed_output is
- * additionally validated by zod client-side. One retry as belt-and-braces.
+ * Runs the extraction with a structured-output format: the API constrains the
+ * response to extractedSDSSchema server-side, so the model cannot return
+ * prose or a malformed shape. Thinking is disabled to keep the call fast,
+ * cheap, and deterministic — this is careful reading, not open reasoning.
+ * parsed_output is additionally validated by zod. One retry as belt-and-braces.
  */
-export async function extractSDS(sdsText: string): Promise<ExtractedSDS> {
+export async function extractSDS(
+  pageTaggedText: string,
+  pageCount: number,
+): Promise<ExtractedIndexRow> {
   const client = getAnthropicClient();
-  const userMessage = buildExtractionUserMessage(sdsText.slice(0, MAX_INPUT_CHARS));
+  const userMessage = buildExtractionUserMessage(
+    pageTaggedText.slice(0, MAX_INPUT_CHARS),
+    pageCount,
+  );
 
   let lastError: unknown = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -32,6 +38,7 @@ export async function extractSDS(sdsText: string): Promise<ExtractedSDS> {
       const response = await client.messages.parse({
         model: EXTRACTION_MODEL,
         max_tokens: MAX_OUTPUT_TOKENS,
+        thinking: { type: "disabled" },
         system: EXTRACTION_SYSTEM_PROMPT,
         output_config: { format: zodOutputFormat(extractedSDSSchema) },
         messages: [{ role: "user", content: userMessage }],
@@ -45,8 +52,6 @@ export async function extractSDS(sdsText: string): Promise<ExtractedSDS> {
       lastError = new Error(`Extraction returned no parseable output (stop_reason: ${response.stop_reason})`);
     } catch (err) {
       lastError = err;
-      // API-level errors (rate limit, overload) are retried once too; the
-      // route handler maps whatever we finally throw to an HTTP status.
     }
   }
   throw lastError;

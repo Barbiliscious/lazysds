@@ -15,14 +15,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const text: unknown = (req.body as { text?: unknown } | undefined)?.text;
+  const body = req.body as { text?: unknown; pageCount?: unknown } | undefined;
+  const text: unknown = body?.text;
   if (typeof text !== "string" || text.trim().length === 0) {
     res.status(400).json({ error: "Request body must be JSON with a non-empty \"text\" string" });
     return;
   }
+  const pageCount = typeof body?.pageCount === "number" && body.pageCount > 0 ? body.pageCount : 1;
 
   try {
-    const extracted = await extractSDS(text);
+    const extracted = await extractSDS(text, pageCount);
     res.status(200).json({ extracted });
   } catch (err) {
     // Map SDK errors to sensible statuses; keep messages user-safe.

@@ -1,7 +1,7 @@
-import type { ExtractedSDS, SDSSourceKind } from "@shared/types";
+import type { ExtractedIndexRow, SDSSourceKind } from "@shared/types";
 
 /**
- * In-memory hand-off between the upload flow and the review screen.
+ * In-memory hand-off between the intake flow and the approval screen.
  * Deliberately not persisted: a File object can't survive a page refresh
  * anyway, and re-uploading is cheap. If the user refreshes /review, the
  * page redirects home.
@@ -9,9 +9,8 @@ import type { ExtractedSDS, SDSSourceKind } from "@shared/types";
 
 export interface PendingReview {
   file: File;
-  text: string;
-  extracted: ExtractedSDS;
-  /** How the PDF got here — recorded on the saved register row. */
+  extracted: ExtractedIndexRow;
+  /** How the PDF got here — recorded on the saved record. */
   source: SDSSourceKind;
 }
 

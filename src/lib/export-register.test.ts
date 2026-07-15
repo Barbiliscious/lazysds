@@ -1,61 +1,73 @@
 import { describe, expect, it } from "vitest";
-import type { SDSRecord } from "@shared/types";
-import { formatCell, registerToCsv } from "./export-register";
+import type { ExtractedIndexRow, SDSField, SDSFieldKey, SDSIndexRecord } from "@shared/types";
+import { cellText, registerToCsv } from "./export-register";
 
-function makeRecord(overrides: Partial<SDSRecord> = {}): SDSRecord {
+const FIELD_KEYS: SDSFieldKey[] = [
+  "product_name", "manufacturer", "supplier_importer", "product_codes", "issue_date",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
+  "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
+  "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
+  "storage", "incompatibilities", "fire_media", "dilution_condition",
+];
+
+const notStated: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };
+const stated = (value: string): SDSField => ({ value, status: "STATED", excerpt: `src: ${value}`, location: "Section 1" });
+
+function makeRecord(overrides: Partial<Record<SDSFieldKey, SDSField>> = {}, extra: Partial<SDSIndexRecord> = {}): SDSIndexRecord {
+  const base = Object.fromEntries(FIELD_KEYS.map((k) => [k, notStated])) as Record<SDSFieldKey, SDSField>;
+  const extracted: ExtractedIndexRow = {
+    ...base,
+    ...overrides,
+    extraction_status: "READY_FOR_HUMAN_REVIEW",
+    review_reasons: [],
+  };
   return {
     id: "00000000-0000-0000-0000-000000000001",
-    product_name: "Mortein Outdoor",
-    manufacturer: "Reckitt",
-    supplier: null,
-    is_hazardous: true,
-    dangerous_goods_class: "2.1",
-    un_number: "1950",
-    issue_date: "12 March 2024",
-    hazard_statements: ["H222 Extremely flammable aerosol.", "H229 Pressurised container."],
-    confidence: { product_name: "high", manufacturer: "high", is_hazardous: "high" },
+    record_id: "RECKITT-MORTEIN-2024-03-12",
     pdf_url: "https://example.com/sds.pdf",
+    extracted,
+    review_date: "2029-03-12",
+    review_date_calculated: true,
+    currency_flag: "CURRENT",
     source: "upload",
-    reviewed_by: "AM",
+    verified_by: "AM",
+    verified_at: "2026-07-14T02:30:00.000Z",
     created_at: "2026-07-14T02:30:00.000Z",
-    ...overrides,
+    ...extra,
   };
 }
 
-describe("formatCell", () => {
-  it("renders booleans as Yes/No and null as empty", () => {
-    expect(formatCell(makeRecord(), "is_hazardous")).toBe("Yes");
-    expect(formatCell(makeRecord({ is_hazardous: false }), "is_hazardous")).toBe("No");
-    expect(formatCell(makeRecord({ is_hazardous: null }), "is_hazardous")).toBe("");
-    expect(formatCell(makeRecord({ supplier: null }), "supplier")).toBe("");
+describe("cellText", () => {
+  it("renders a stated field's value and a not-stated field's status", () => {
+    const r = makeRecord({ product_name: stated("Mortein Outdoor") });
+    expect(cellText(r, { field: "product_name" })).toBe("Mortein Outdoor");
+    expect(cellText(r, { field: "manufacturer" })).toBe("NOT STATED");
   });
-
-  it("joins hazard statements with semicolons", () => {
-    expect(formatCell(makeRecord(), "hazard_statements")).toBe(
-      "H222 Extremely flammable aerosol.; H229 Pressurised container.",
-    );
+  it("renders record-derived columns", () => {
+    const r = makeRecord({}, { currency_flag: "POSSIBLY_OUTDATED" });
+    expect(cellText(r, { record: "record_id" })).toBe("RECKITT-MORTEIN-2024-03-12");
+    expect(cellText(r, { record: "sds_link" })).toBe("https://example.com/sds.pdf");
+    expect(cellText(r, { record: "currency_flag" })).toBe("POSSIBLY OUTDATED - OBTAIN CURRENT SDS");
+    expect(cellText(r, { record: "verified_at" })).toBe("2026-07-14");
   });
-
-  it("keeps only the date part of created_at", () => {
-    expect(formatCell(makeRecord(), "created_at")).toBe("2026-07-14");
+  it("renders the controlled N/A-unclear status verbatim", () => {
+    const r = makeRecord({ poisons_schedule: { value: null, status: "NA_UNCLEAR", excerpt: null, location: null } });
+    expect(cellText(r, { field: "poisons_schedule" })).toBe("N/A - MEANING UNCLEAR - MANUAL REVIEW REQUIRED");
   });
 });
 
 describe("registerToCsv", () => {
-  it("starts with the configured headers", () => {
-    const firstLine = registerToCsv([]).split("\r\n")[0];
-    expect(firstLine).toContain("Product Name");
-    expect(firstLine).toContain("Reviewed By");
+  it("has all 32 configured columns in the header", () => {
+    const header = (registerToCsv([]).split("\r\n")[0] ?? "").split(",");
+    expect(header).toHaveLength(32);
+    expect(header[0]).toBe("SDS Record ID");
+    expect(header).toContain("Dilution / Use Condition");
+    expect(header[header.length - 1]).toBe("Verified Date");
   });
-
   it("quotes values containing commas, quotes or newlines", () => {
-    const csv = registerToCsv([
-      makeRecord({ product_name: 'Cleaner, "Heavy Duty"', manufacturer: "Line1\nLine2" }),
-    ]);
+    const csv = registerToCsv([makeRecord({ product_name: stated('Cleaner, "Heavy Duty"') })]);
     expect(csv).toContain('"Cleaner, ""Heavy Duty"""');
-    expect(csv).toContain('"Line1\nLine2"');
   });
-
   it("produces one CRLF-terminated line per record plus the header", () => {
     const csv = registerToCsv([makeRecord(), makeRecord()]);
     expect(csv.endsWith("\r\n")).toBe(true);

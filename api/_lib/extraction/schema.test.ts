@@ -1,41 +1,62 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { extractedSDSSchema } from "./schema.js";
+import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "../../../shared/types.js";
 
-function loadFixture(name: string): unknown {
-  return JSON.parse(readFileSync(join(__dirname, "../../../tests/fixtures", name), "utf-8"));
+const FIELD_KEYS: SDSFieldKey[] = [
+  "product_name", "manufacturer", "supplier_importer", "product_codes", "issue_date",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
+  "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
+  "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
+  "storage", "incompatibilities", "fire_media", "dilution_condition",
+];
+
+const notStated: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };
+
+function makeRow(overrides: Partial<Record<SDSFieldKey, SDSField>> = {}): ExtractedIndexRow {
+  const base = Object.fromEntries(FIELD_KEYS.map((k) => [k, notStated])) as Record<SDSFieldKey, SDSField>;
+  return {
+    ...base,
+    ...overrides,
+    extraction_status: "READY_FOR_HUMAN_REVIEW",
+    review_reasons: [],
+  };
 }
 
 describe("extractedSDSSchema", () => {
-  it("accepts a fully-populated extraction", () => {
-    const result = extractedSDSSchema.safeParse(loadFixture("extraction-valid.json"));
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.un_number).toBe("1950");
-      expect(result.data.hazard_statements).toHaveLength(2);
-    }
-  });
-
-  it("accepts an extraction where nothing was stated (all nulls, empty statements)", () => {
-    const result = extractedSDSSchema.safeParse(loadFixture("extraction-all-nulls.json"));
+  it("accepts a stated field with its evidence", () => {
+    const row = makeRow({
+      product_name: { value: "Mortein Outdoor", status: "STATED", excerpt: "Product name: Mortein Outdoor", location: "Section 1, SDS page 1" },
+      hazardous_chemical: { value: "YES", status: "STATED", excerpt: "Classified as hazardous.", location: "Section 2, SDS page 1" },
+    });
+    const result = extractedSDSSchema.safeParse(row);
     expect(result.success).toBe(true);
   });
 
-  it("rejects wrong types and out-of-vocabulary confidence values", () => {
-    const result = extractedSDSSchema.safeParse(loadFixture("extraction-invalid-guessy.json"));
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      const badPaths = result.error.issues.map((i) => i.path.join("."));
-      expect(badPaths).toContain("is_hazardous"); // "yes" is not a boolean
-      expect(badPaths).toContain("dangerous_goods_class"); // number, not string
-      expect(badPaths).toContain("hazard_statements"); // string, not array
-      expect(badPaths).toContain("confidence.manufacturer"); // "medium" not allowed
-    }
+  it("accepts an all-not-stated row (every field a status, empty reasons)", () => {
+    expect(extractedSDSSchema.safeParse(makeRow()).success).toBe(true);
   });
 
-  it("rejects a payload with missing fields", () => {
-    const result = extractedSDSSchema.safeParse({ product_name: "X" });
+  it("rejects an out-of-vocabulary status", () => {
+    const bad = makeRow();
+    // @ts-expect-error deliberately invalid status token
+    bad.product_name = { value: null, status: "MAYBE", excerpt: null, location: null };
+    const result = extractedSDSSchema.safeParse(bad);
     expect(result.success).toBe(false);
+  });
+
+  it("rejects an out-of-vocabulary extraction status", () => {
+    const bad = { ...makeRow(), extraction_status: "APPROVED" };
+    expect(extractedSDSSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("rejects a wrong shape (value must be string or null, not boolean)", () => {
+    const bad = makeRow();
+    // @ts-expect-error deliberately wrong value type
+    bad.hazardous_chemical = { value: true, status: "STATED", excerpt: "x", location: "y" };
+    expect(extractedSDSSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("rejects a payload missing fields", () => {
+    expect(extractedSDSSchema.safeParse({ product_name: notStated }).success).toBe(false);
   });
 });

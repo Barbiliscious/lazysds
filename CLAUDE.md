@@ -9,9 +9,15 @@ acronym "SDS" — plain language and big tap targets everywhere.
 
 - **Frontend:** React 19 + TypeScript + Vite, Tailwind CSS v4, react-router
 - **Backend:** Vercel serverless functions in `api/` (no Express)
-- **DB + files:** Supabase — Postgres table `sds_records`, storage bucket `sds-pdfs`
+- **DB + files:** Supabase — Postgres table `sds_index` (one quick-reference
+  row per SDS; the older flat `sds_records` from migration 0001 is retired but
+  left in place), storage bucket `sds-pdfs`
   - Hosted project: `lazysds` (ref `ijqwxgjlnvatfgduohwo`, ap-southeast-2)
-- **AI:** Anthropic API, model `claude-haiku-4-5-20251001`, called only from `api/extract.ts`
+- **AI:** Anthropic API, model `claude-sonnet-5`, called only from
+  `api/extract.ts`. Extraction follows the Grampians Community Health
+  quick-reference standard (v1.1): one row per SDS, 25 SDS-derived fields
+  each carrying a verbatim source excerpt + location, controlled statuses
+  (never guess), deterministic dates/currency computed in code not by the AI.
 - **Hosting:** Vercel — project `lazysds` on team `mullaneaa-7828s-projects`,
   live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
   ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.

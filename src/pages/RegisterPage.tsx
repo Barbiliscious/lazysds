@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import type { SDSRecord } from "@shared/types";
+import type { SDSField, SDSIndexRecord } from "@shared/types";
+import { CURRENCY_DISPLAY, EXTRACTION_STATUS_DISPLAY, fieldCellText } from "@shared/sds-fields";
 import { fetchRegister } from "@/lib/register";
 import { downloadRegisterCsv, downloadRegisterXlsx } from "@/lib/export-register";
+import QuickReferenceNotice from "@/components/QuickReferenceNotice";
 
 /**
- * The register: every product that's been reviewed and saved. Read-only in
- * the app — corrections happen in the Supabase dashboard (see CLAUDE.md).
- * Rendered as cards, not a table, so it works one-handed on a phone.
+ * The register: every SDS that's been checked and saved, newest first.
+ * Read-only in the app — corrections happen in Supabase. Rendered as cards,
+ * not a table, so it works one-handed on a phone.
  */
 
 type LoadState =
   | { phase: "loading" }
   | { phase: "error"; message: string }
-  | { phase: "loaded"; records: SDSRecord[] };
+  | { phase: "loaded"; records: SDSIndexRecord[] };
 
 export default function RegisterPage() {
   const [load, setLoad] = useState<LoadState>({ phase: "loading" });
@@ -38,7 +40,8 @@ export default function RegisterPage() {
     const q = query.trim().toLowerCase();
     if (!q) return records;
     return records.filter((r) =>
-      [r.product_name, r.manufacturer, r.supplier].some((v) => v?.toLowerCase().includes(q)),
+      [r.extracted.product_name.value, r.extracted.manufacturer.value, r.extracted.supplier_importer.value]
+        .some((v) => v?.toLowerCase().includes(q)),
     );
   }, [records, query]);
 
@@ -57,15 +60,15 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-3xl px-4 py-8">
-        <header className="mb-6">
+        <header className="mb-4">
           <Link to="/" className="text-sm text-blue-600 underline">
             ← Add another product
           </Link>
           <h1 className="mt-2 text-3xl font-bold text-slate-800">Safety register</h1>
-          <p className="mt-1 text-slate-600">
-            Every product that's been checked and saved, newest first.
-          </p>
+          <p className="mt-1 text-slate-600">Every product that's been checked and saved, newest first.</p>
         </header>
+
+        <QuickReferenceNotice className="mb-6" />
 
         {load.phase === "loading" && (
           <div className="flex items-center gap-3 text-slate-600">
@@ -148,67 +151,77 @@ export default function RegisterPage() {
   );
 }
 
-function RecordCard({ record }: { record: SDSRecord }) {
+function RecordCard({ record }: { record: SDSIndexRecord }) {
+  const e = record.extracted;
+  const manufacturer = e.manufacturer.value;
+  const supplier = e.supplier_importer.value;
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h2 className="text-lg font-semibold text-slate-800">
-          {record.product_name ?? <span className="italic text-slate-400">Product name not stated</span>}
+          {e.product_name.value ?? <span className="italic text-slate-400">Product name not stated</span>}
         </h2>
-        <HazardBadge value={record.is_hazardous} />
+        <HazardBadge field={e.hazardous_chemical} />
       </div>
 
-      {(record.manufacturer || record.supplier) && (
-        <p className="mt-0.5 text-slate-600">
-          {[record.manufacturer, record.supplier].filter(Boolean).join(" · ")}
-        </p>
+      {(manufacturer || supplier) && (
+        <p className="mt-0.5 text-slate-600">{[manufacturer, supplier].filter(Boolean).join(" · ")}</p>
       )}
 
-      {(record.dangerous_goods_class || record.un_number) && (
-        <p className="mt-1 text-sm text-slate-600">
-          {record.dangerous_goods_class && <>DG class {record.dangerous_goods_class}</>}
-          {record.dangerous_goods_class && record.un_number && " · "}
-          {record.un_number && <>UN {record.un_number}</>}
-        </p>
-      )}
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <DgBadge field={e.dangerous_goods} />
+        <CurrencyBadge flag={record.currency_flag} />
+        {e.extraction_status !== "READY_FOR_HUMAN_REVIEW" && (
+          <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
+            {EXTRACTION_STATUS_DISPLAY[e.extraction_status]}
+          </span>
+        )}
+      </div>
 
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-        {record.pdf_url ? (
-          <a
-            href={record.pdf_url}
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-blue-600 underline"
-          >
-            Open the safety sheet (PDF)
-          </a>
-        ) : (
-          <span className="text-slate-400">No PDF stored</span>
-        )}
+        <a href={record.pdf_url} target="_blank" rel="noreferrer" className="font-medium text-blue-600 underline">
+          Open the safety sheet (PDF)
+        </a>
         <span className="text-slate-500">
-          Checked by {record.reviewed_by} · {record.created_at.slice(0, 10)}
+          Checked by {record.verified_by} · {record.verified_at.slice(0, 10)}
         </span>
       </div>
     </li>
   );
 }
 
-function HazardBadge({ value }: { value: boolean | null }) {
-  if (value === true) {
-    return (
-      <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">Hazardous</span>
-    );
+function HazardBadge({ field }: { field: SDSField }) {
+  if (field.status === "STATED" && field.value?.toUpperCase() === "YES") {
+    return <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">Hazardous</span>;
   }
-  if (value === false) {
-    return (
-      <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">
-        Not hazardous
-      </span>
-    );
+  if (field.status === "STATED" && field.value?.toUpperCase() === "NO") {
+    return <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">Not hazardous</span>;
   }
   return (
     <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
-      Hazard status not stated
+      Hazard: {fieldCellText(field)}
+    </span>
+  );
+}
+
+function DgBadge({ field }: { field: SDSField }) {
+  const isDg = field.status === "STATED" && field.value?.toUpperCase() === "YES";
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-medium ${
+        isDg ? "bg-orange-100 text-orange-900" : "bg-slate-100 text-slate-600"
+      }`}
+    >
+      {isDg ? "Dangerous Good" : `DG: ${fieldCellText(field)}`}
+    </span>
+  );
+}
+
+function CurrencyBadge({ flag }: { flag: SDSIndexRecord["currency_flag"] }) {
+  if (flag === "CURRENT") return null;
+  return (
+    <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
+      {CURRENCY_DISPLAY[flag]}
     </span>
   );
 }

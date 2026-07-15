@@ -1,5 +1,6 @@
-import { REGISTER_COLUMNS } from "@shared/config/register-columns";
-import type { SDSRecord } from "@shared/types";
+import { REGISTER_COLUMNS, type ColumnRef } from "@shared/config/register-columns";
+import { CURRENCY_DISPLAY, EXTRACTION_STATUS_DISPLAY, fieldCellText } from "@shared/sds-fields";
+import type { SDSIndexRecord } from "@shared/types";
 
 /**
  * Turns register records into downloadable CSV / XLSX files. Both formats
@@ -7,18 +8,29 @@ import type { SDSRecord } from "@shared/types";
  * — edit that file to change what gets exported, not this one.
  */
 
-/** One cell's value as text, the same in both CSV and XLSX. */
-export function formatCell(record: SDSRecord, field: keyof SDSRecord): string {
-  const value = record[field];
-  if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "Yes" : "No";
-  if (Array.isArray(value)) return value.join("; ");
-  if (field === "created_at") {
-    // timestamptz from Postgres — keep just the unambiguous date part.
-    return String(value).slice(0, 10);
+/** One cell's text for a given column, the same in CSV and XLSX. */
+export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
+  if ("field" in ref) {
+    return fieldCellText(record.extracted[ref.field]);
   }
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  switch (ref.record) {
+    case "record_id":
+      return record.record_id;
+    case "sds_link":
+      return record.pdf_url;
+    case "review_date":
+      return record.review_date ?? "";
+    case "currency_flag":
+      return CURRENCY_DISPLAY[record.currency_flag];
+    case "extraction_status":
+      return EXTRACTION_STATUS_DISPLAY[record.extracted.extraction_status];
+    case "review_reasons":
+      return record.extracted.review_reasons.join("; ");
+    case "verified_by":
+      return record.verified_by;
+    case "verified_at":
+      return record.verified_at.slice(0, 10);
+  }
 }
 
 /** Quotes a value per RFC 4180 when it contains a comma, quote or newline. */
@@ -26,11 +38,11 @@ function csvEscape(value: string): string {
   return /[",\n\r]/.test(value) ? `"${value.replaceAll('"', '""')}"` : value;
 }
 
-export function registerToCsv(records: SDSRecord[]): string {
+export function registerToCsv(records: SDSIndexRecord[]): string {
   const rows = [
     REGISTER_COLUMNS.map((c) => csvEscape(c.header)).join(","),
     ...records.map((record) =>
-      REGISTER_COLUMNS.map((c) => csvEscape(formatCell(record, c.field))).join(","),
+      REGISTER_COLUMNS.map((c) => csvEscape(cellText(record, c.ref))).join(","),
     ),
   ];
   return rows.join("\r\n") + "\r\n";
@@ -50,7 +62,7 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(url);
 }
 
-export function downloadRegisterCsv(records: SDSRecord[]): void {
+export function downloadRegisterCsv(records: SDSIndexRecord[]): void {
   // The BOM makes Excel detect UTF-8 instead of mangling accented characters.
   const blob = new Blob(["\uFEFF" + registerToCsv(records)], {
     type: "text/csv;charset=utf-8",
@@ -58,7 +70,7 @@ export function downloadRegisterCsv(records: SDSRecord[]): void {
   downloadBlob(blob, exportFilename("csv"));
 }
 
-export async function downloadRegisterXlsx(records: SDSRecord[]): Promise<void> {
+export async function downloadRegisterXlsx(records: SDSIndexRecord[]): Promise<void> {
   // Lazy import: exceljs is large and only needed the moment someone exports.
   const { Workbook } = await import("exceljs");
   const workbook = new Workbook();
@@ -66,11 +78,11 @@ export async function downloadRegisterXlsx(records: SDSRecord[]): Promise<void> 
 
   sheet.columns = REGISTER_COLUMNS.map((c) => ({
     header: c.header,
-    width: Math.max(14, c.header.length + 4),
+    width: Math.max(14, Math.min(50, c.header.length + 6)),
   }));
   sheet.getRow(1).font = { bold: true };
   for (const record of records) {
-    sheet.addRow(REGISTER_COLUMNS.map((c) => formatCell(record, c.field)));
+    sheet.addRow(REGISTER_COLUMNS.map((c) => cellText(record, c.ref)));
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
