@@ -8,7 +8,7 @@ import { startBarcodeScanner, type RunningScanner } from "@/lib/barcode-scanner"
  * Phase 5, key-free: scan (or type) a product barcode, look it up in the
  * free Open*Facts databases, and hand the product name to the /find flow.
  * Those databases are crowdsourced, so "not found" is a normal outcome
- * with a web-search fallback — never a dead end.
+ * with a web-search fallback - never a dead end.
  */
 
 type Lookup =
@@ -33,7 +33,7 @@ export default function ScanPage() {
   async function handleCode(raw: string) {
     const code = normalizeBarcode(raw);
     if (!isValidBarcode(code)) {
-      setLookup({ phase: "error", message: "That doesn't look like a complete barcode — check the digits and try again." });
+      setLookup({ phase: "error", message: "That doesn't look like a complete barcode - check the digits and try again." });
       return;
     }
     scannerRef.current?.stop();
@@ -58,12 +58,12 @@ export default function ScanPage() {
       scannerRef.current = await startBarcodeScanner(videoRef.current, (code) => void handleCode(code));
       setCameraState("on");
     } catch {
-      // No camera, no permission, or no HTTPS — typing still works.
+      // No camera, no permission, or no HTTPS - typing still works.
       setCameraState("unavailable");
     }
   }
 
-  // Prepend the brand only when it isn't already part of the name —
+  // Prepend the brand only when it isn't already part of the name -
   // "Glen 20" + "Glen 20 Original Scent" must not double up.
   const searchName =
     lookup.phase === "found"
@@ -106,7 +106,7 @@ export default function ScanPage() {
           {cameraState === "on" && <p className="mt-2 text-slate-600">Point the camera at the barcode.</p>}
           {cameraState === "unavailable" && (
             <p role="alert" className="rounded-lg bg-amber-50 border border-amber-300 px-3 py-2 text-amber-900">
-              The camera couldn't start — no problem, type the numbers instead.
+              The camera couldn't start - no problem, type the numbers instead.
             </p>
           )}
 
@@ -145,7 +145,7 @@ export default function ScanPage() {
             <p className="text-sm text-green-800">Barcode {lookup.code} looks like:</p>
             <p className="mt-1 text-xl font-semibold text-slate-800">
               {lookup.product.name}
-              {lookup.product.brand && <span className="font-normal text-slate-600"> — {lookup.product.brand}</span>}
+              {lookup.product.brand && <span className="font-normal text-slate-600"> - {lookup.product.brand}</span>}
             </p>
             <button
               type="button"
@@ -161,7 +161,7 @@ export default function ScanPage() {
         {lookup.phase === "not-found" && (
           <section className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-slate-700">
-              The free product databases don't know barcode <strong>{lookup.code}</strong>. That happens a lot —
+              The free product databases don't know barcode <strong>{lookup.code}</strong>. That happens a lot -
               they're volunteer-built.
             </p>
             <button
@@ -174,7 +174,7 @@ export default function ScanPage() {
               Search the web for this barcode
             </button>
             <p className="mt-3 text-sm text-slate-600">
-              The search usually shows the product's name — then{" "}
+              The search usually shows the product's name - then{" "}
               <Link to="/find" className="text-blue-600 underline">
                 use it to find the safety sheet
               </Link>

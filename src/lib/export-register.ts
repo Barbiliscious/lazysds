@@ -3,13 +3,19 @@ import {
   QUICK_REFERENCE_BANNER,
   type ColumnRef,
 } from "@shared/config/register-columns";
-import { CURRENCY_DISPLAY, EXTRACTION_STATUS_DISPLAY, fieldCellText } from "@shared/sds-fields";
+import {
+  CURRENCY_DISPLAY,
+  EXTRACTION_STATUS_DISPLAY,
+  fieldCellText,
+  normaliseDisplayDashes,
+  pictogramCellText,
+} from "@shared/sds-fields";
 import type { SDSField, SDSIndexRecord } from "@shared/types";
 
 /**
  * Turns register records into downloadable CSV / XLSX files. The columns,
  * order, and group bands are driven by REGISTER_COLUMNS
- * (shared/config/register-columns.ts) — edit that file, not this one. The
+ * (shared/config/register-columns.ts) - edit that file, not this one. The
  * XLSX matches the Grampians example workbook: a banner row, navy group
  * bands, merged Manufacturer/Supplier and PPE columns, and a hyperlinked
  * SDS Link. CSV is the same columns, flat.
@@ -36,12 +42,18 @@ function manufacturerSupplier(record: SDSIndexRecord): string {
     (v): v is string => Boolean(v),
   );
   const unique = [...new Set(parts)];
-  return unique.length > 0 ? unique.join(" / ") : fieldCellText(record.extracted.manufacturer);
+  return unique.length > 0
+    ? normaliseDisplayDashes(unique.join(" / "))
+    : fieldCellText(record.extracted.manufacturer);
 }
 
-/** One cell's plain text for a given column — used by CSV and as a fallback. */
+/** One cell's plain text for a given column - used by CSV and as a fallback. */
 export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
-  if ("field" in ref) return fieldCellText(record.extracted[ref.field]);
+  if ("field" in ref) {
+    return ref.field === "pictograms"
+      ? pictogramCellText(record.extracted.pictograms)
+      : fieldCellText(record.extracted[ref.field]);
+  }
   if ("combined" in ref) {
     if (ref.combined === "manufacturer_supplier") return manufacturerSupplier(record);
     const lines = ppeLines(record);
@@ -57,7 +69,7 @@ export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
     case "extraction_status":
       return EXTRACTION_STATUS_DISPLAY[record.extracted.extraction_status];
     case "review_reasons":
-      return record.extracted.review_reasons.join("; ");
+      return normaliseDisplayDashes(record.extracted.review_reasons.join("; "));
     case "verified_by":
       return record.verified_by;
     case "verified_at":
@@ -131,7 +143,7 @@ async function buildWorkbook(records: SDSIndexRecord[]) {
 
   cols.forEach((_, i) => (ws.getColumn(i + 1).width = WIDTHS[i] ?? 20));
 
-  // Row 1 — the mandatory notice, merged across every column.
+  // Row 1 - the mandatory notice, merged across every column.
   ws.mergeCells(1, 1, 1, n);
   const banner = ws.getCell(1, 1);
   banner.value = QUICK_REFERENCE_BANNER;
@@ -140,7 +152,7 @@ async function buildWorkbook(records: SDSIndexRecord[]) {
   banner.alignment = { wrapText: true, vertical: "middle" };
   ws.getRow(1).height = 42;
 
-  // Row 2 — group bands (merge each run of the same non-empty group label).
+  // Row 2 - group bands (merge each run of the same non-empty group label).
   for (let i = 0; i < n; ) {
     const group = cols[i]!.group;
     let j = i;
@@ -156,7 +168,7 @@ async function buildWorkbook(records: SDSIndexRecord[]) {
     i = j + 1;
   }
 
-  // Row 3 — column headers.
+  // Row 3 - column headers.
   cols.forEach((c, i) => {
     const cell = ws.getCell(3, i + 1);
     cell.value = c.header;

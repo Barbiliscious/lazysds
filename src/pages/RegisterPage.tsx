@@ -8,7 +8,7 @@ import QuickReferenceNotice from "@/components/QuickReferenceNotice";
 
 /**
  * The register: every SDS that's been checked and saved, newest first.
- * Read-only in the app — corrections happen in Supabase. Rendered as cards,
+ * Read-only in the app - corrections happen in Supabase. Rendered as cards,
  * not a table, so it works one-handed on a phone.
  */
 
@@ -97,7 +97,7 @@ export default function RegisterPage() {
 
         {load.phase === "loaded" && records.length > 0 && (
           <>
-            {/* Export the whole register regardless of the search filter —
+            {/* Export the whole register regardless of the search filter -
                 a compliance export should never be silently partial. */}
             <div className="mb-4 flex flex-wrap items-center gap-3">
               <button

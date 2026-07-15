@@ -1,6 +1,6 @@
 /**
  * Thin wrapper around the zxing browser scanner so pages don't deal with
- * its API (and so the library — ~300 kB — only loads when a camera is
+ * its API (and so the library - ~300 kB - only loads when a camera is
  * actually opened, via the dynamic import).
  */
 
@@ -17,7 +17,7 @@ export async function startBarcodeScanner(
     import("@zxing/library"),
   ]);
 
-  // Retail product barcodes only — skipping QR & friends cuts false reads.
+  // Retail product barcodes only - skipping QR & friends cuts false reads.
   const hints = new Map();
   hints.set(DecodeHintType.POSSIBLE_FORMATS, [
     BarcodeFormat.EAN_13,

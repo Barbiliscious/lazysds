@@ -1,13 +1,13 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Browser-side Supabase client. Only the URL + anon key are used here —
+// Browser-side Supabase client. Only the URL + anon key are used here -
 // they're designed to be public, and RLS limits what they can do.
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 if (!url || !anonKey) {
   throw new Error(
-    "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY — copy .env.example to .env.local and fill them in.",
+    "Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY - copy .env.example to .env.local and fill them in.",
   );
 }
 

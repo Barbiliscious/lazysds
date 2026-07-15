@@ -6,7 +6,7 @@ import { isValidBarcode, normalizeBarcode } from "../shared/barcode.js";
 
 /**
  * POST /api/barcode
- * Body: { code: string } — a retail barcode (EAN-8/13, UPC-A, GTIN-14).
+ * Body: { code: string } - a retail barcode (EAN-8/13, UPC-A, GTIN-14).
  * Response: { product: { name, brand } | null } or { error: string }.
  * null is the normal "we don't know this one" answer, not a failure.
  */
@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
   const code: unknown = (req.body as { code?: unknown } | undefined)?.code;
   if (typeof code !== "string" || !isValidBarcode(code)) {
-    res.status(400).json({ error: "That doesn't look like a complete barcode — check the digits and try again." });
+    res.status(400).json({ error: "That doesn't look like a complete barcode - check the digits and try again." });
     return;
   }
 
@@ -27,6 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     res.status(200).json({ product });
   } catch (err) {
     console.error("barcode lookup failed:", err);
-    res.status(502).json({ error: "The product databases couldn't be reached — try again shortly." });
+    res.status(502).json({ error: "The product databases couldn't be reached - try again shortly." });
   }
 }

@@ -4,7 +4,7 @@ import { buildRecordId, computeCurrencyFlag, resolveReviewDate } from "@shared/s
 /**
  * Turns a confirmed extraction into the record that gets stored. The
  * date-derived columns (record id, review date, currency flag) are computed
- * here deterministically — never taken from the AI. Pure, so it's unit-tested
+ * here deterministically - never taken from the AI. Pure, so it's unit-tested
  * without touching Supabase.
  */
 export function buildRecord(

@@ -4,7 +4,7 @@
  * of an SDS quick-reference index row.
  *
  * Model: ONE row per SDS. The row is an index entry that points at the
- * source SDS — never a substitute for it. Every value the AI writes carries
+ * source SDS - never a substitute for it. Every value the AI writes carries
  * its own evidence (a verbatim source excerpt + where it came from) so a
  * human can verify it at a glance on the approval screen. If the AI can't
  * quote a source for a value, it must return a status instead of a value.
@@ -14,7 +14,7 @@
 export type SDSSourceKind = "upload" | "pubchem" | "web_search";
 
 /**
- * Controlled statuses. These are NOT interchangeable — each means a
+ * Controlled statuses. These are NOT interchangeable - each means a
  * different thing in a safety context (see the extraction standard).
  * Stored as tokens; human-readable strings live in shared/sds-fields.ts.
  */
@@ -92,21 +92,21 @@ export type CurrencyFlag = "CURRENT" | "POSSIBLY_OUTDATED" | "DATE_UNCONFIRMED";
 /** A confirmed row in the register. */
 export interface SDSIndexRecord {
   id: string;
-  /** Column 1 — SUPPLIER-PRODUCT-ISSUEDATE, built in code. */
+  /** Column 1 - SUPPLIER-PRODUCT-ISSUEDATE, built in code. */
   record_id: string;
-  /** Column 6 — the link to the stored PDF. Every row must have one. */
+  /** Column 6 - the link to the stored PDF. Every row must have one. */
   pdf_url: string;
   extracted: ExtractedIndexRow;
-  /** Column 8 — stated review-by date, or Issue + 5 years. */
+  /** Column 8 - stated review-by date, or Issue + 5 years. */
   review_date: string | null;
   /** True when review_date was calculated rather than read from the SDS. */
   review_date_calculated: boolean;
-  /** Column 9 — derived from the dates. */
+  /** Column 9 - derived from the dates. */
   currency_flag: CurrencyFlag;
   source: SDSSourceKind;
-  /** Column 31 — human only. In this app, saving IS the human confirmation. */
+  /** Column 31 - human only. In this app, saving IS the human confirmation. */
   verified_by: string;
-  /** Column 32 — set to now() at save time. */
+  /** Column 32 - set to now() at save time. */
   verified_at: string;
   created_at: string;
 }

@@ -10,7 +10,7 @@ type Step =
 
 /**
  * Home screen: one big obvious action. The user might be in a store
- * cupboard holding a can of fly spray — no jargon, big tap targets.
+ * cupboard holding a can of fly spray - no jargon, big tap targets.
  */
 export default function HomePage() {
   const [step, setStep] = useState<Step>({ phase: "idle" });
@@ -116,7 +116,7 @@ export default function HomePage() {
         <Link to="/find" className="text-blue-600 underline">
           We'll help you find it
         </Link>{" "}
-        — or{" "}
+        - or{" "}
         <Link to="/scan" className="text-blue-600 underline">
           scan the product's barcode
         </Link>

@@ -6,9 +6,9 @@ import { prepareReview } from "@/lib/sds-intake";
 
 /**
  * Flow B: the user doesn't have the SDS PDF yet. Deliberately built
- * without any search API — the app opens an ordinary web search in a new
+ * without any search API - the app opens an ordinary web search in a new
  * tab, the user copies the PDF's address back in, and the server fetches
- * it (from trusted sites only — shared/config/sds-domains.ts). When a
+ * it (from trusted sites only - shared/config/sds-domains.ts). When a
  * search API key exists one day, it can replace the copy-paste hop
  * without changing anything else on this page.
  */
@@ -60,7 +60,7 @@ export default function FindPage() {
           </Link>
           <h1 className="mt-2 text-3xl font-bold text-slate-800">Find the safety sheet</h1>
           <p className="mt-1 text-slate-600">
-            No PDF? No problem — most manufacturers publish safety data sheets on their websites.
+            No PDF? No problem - most manufacturers publish safety data sheets on their websites.
           </p>
         </header>
 

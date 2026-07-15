@@ -2,9 +2,9 @@ import type { SDSFieldKey } from "../types";
 
 /**
  * ═══════════════════════════════════════════════════════════════════
- *  EDIT ME — register export layout (the "SDS Index" spreadsheet)
+ *  EDIT ME - register export layout (the "SDS Index" spreadsheet)
  * ═══════════════════════════════════════════════════════════════════
- * A condensed, grouped view of the index — matches the Grampians example
+ * A condensed, grouped view of the index - matches the Grampians example
  * workbook. This one file controls the CSV/XLSX columns, their order, their
  * group bands, and their headings.
  *  - `group` is the coloured band above the column (blank = no band).
@@ -20,7 +20,7 @@ import type { SDSFieldKey } from "../types";
  * Note: this condensed view intentionally omits some extracted columns
  * (Signal Word, Poisons Schedule, Transport UN/Class/Group, Incompatibilities,
  * Dilution/Use Condition, Currency Flag). They are still extracted, shown on
- * the approval screen, and stored — add a row here to surface any of them.
+ * the approval screen, and stored - add a row here to surface any of them.
  */
 
 export type RecordColumn =
@@ -50,7 +50,7 @@ export const REGISTER_COLUMNS: RegisterColumn[] = [
   { group: "IDENTIFICATION", header: "Product Name", ref: { field: "product_name" } },
   { group: "IDENTIFICATION", header: "Manufacturer / Supplier / Importer", ref: { combined: "manufacturer_supplier" } },
   { group: "IDENTIFICATION", header: "Product Codes", ref: { field: "product_codes" } },
-  { group: "DOCUMENT CONTROL", header: "Issue / Revision Date", ref: { field: "issue_date" } },
+  { group: "DOCUMENT CONTROL", header: "Issue Date", ref: { field: "issue_date" } },
   { group: "DOCUMENT CONTROL", header: "Review Date", ref: { record: "review_date" } },
   { group: "HAZARD AT A GLANCE", header: "Hazardous Chemical?", ref: { field: "hazardous_chemical" } },
   { group: "HAZARD AT A GLANCE", header: "Dangerous Goods?", ref: { field: "dangerous_goods" } },

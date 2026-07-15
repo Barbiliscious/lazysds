@@ -24,7 +24,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new ApiError("Could not reach the server — check your connection and try again.", 0);
+    throw new ApiError("Could not reach the server - check your connection and try again.", 0);
   }
 
   const payload: unknown = await res.json().catch(() => null);
@@ -53,7 +53,7 @@ export async function extractSDS(text: string, pageCount: number): Promise<Extra
 
 /**
  * Asks /api/fetch-pdf to download an SDS PDF from a trusted site (the
- * browser can't — manufacturers' sites don't allow cross-origin reads)
+ * browser can't - manufacturers' sites don't allow cross-origin reads)
  * and hands it back as a File, ready for the normal intake pipeline.
  */
 export interface BarcodeProduct {

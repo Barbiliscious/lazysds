@@ -37,7 +37,7 @@ export function checkSdsUrl(raw: string): UrlCheck {
       ok: false,
       reason:
         `${hostname} isn't on the trusted sites list, so we can't fetch from it automatically. ` +
-        "Download the PDF yourself and upload it instead — or ask whoever looks after this app " +
+        "Download the PDF yourself and upload it instead - or ask whoever looks after this app " +
         "to add the site to shared/config/sds-domains.ts.",
     };
   }
@@ -45,7 +45,7 @@ export function checkSdsUrl(raw: string): UrlCheck {
 }
 
 /**
- * A plain web search the user opens in a new tab — no search API needed.
+ * A plain web search the user opens in a new tab - no search API needed.
  * filetype:pdf keeps results to direct PDF links whose address can be
  * copied straight back into the app.
  */

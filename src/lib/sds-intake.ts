@@ -24,7 +24,7 @@ export async function prepareReview(
   const { text, pageCount, charCount } = await extractPdfText(file);
   if (charCount < 50) {
     throw new Error(
-      "We couldn't read any text in that PDF — it might be a scanned image. Try a PDF downloaded from the manufacturer's website.",
+      "We couldn't read any text in that PDF - it might be a scanned image. Try a PDF downloaded from the manufacturer's website.",
     );
   }
   onPhase("extracting");

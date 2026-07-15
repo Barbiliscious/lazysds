@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { extractedSDSSchema } from "./schema.js";
 import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "../../../shared/types.js";
 
@@ -23,6 +24,10 @@ function makeRow(overrides: Partial<Record<SDSFieldKey, SDSField>> = {}): Extrac
 }
 
 describe("extractedSDSSchema", () => {
+  it("can be converted to Anthropic's structured-output format", () => {
+    expect(() => zodOutputFormat(extractedSDSSchema)).not.toThrow();
+  });
+
   it("accepts a stated field with its evidence", () => {
     const row = makeRow({
       product_name: { value: "Mortein Outdoor", status: "STATED", excerpt: "Product name: Mortein Outdoor", location: "Section 1, SDS page 1" },
@@ -34,6 +39,13 @@ describe("extractedSDSSchema", () => {
 
   it("accepts an all-not-stated row (every field a status, empty reasons)", () => {
     expect(extractedSDSSchema.safeParse(makeRow()).success).toBe(true);
+  });
+
+  it("accepts only the controlled pictogram wording", () => {
+    const stated = (value: string): SDSField => ({ value, status: "STATED", excerpt: "Named pictograms", location: "Section 2" });
+    expect(extractedSDSSchema.safeParse(makeRow({ pictograms: stated("Flammable; Corrosive") })).success).toBe(true);
+    expect(extractedSDSSchema.safeParse(makeRow({ pictograms: stated("None") })).success).toBe(true);
+    expect(extractedSDSSchema.safeParse(makeRow({ pictograms: stated("Flame; Corrosion") })).success).toBe(false);
   });
 
   it("rejects an out-of-vocabulary status", () => {

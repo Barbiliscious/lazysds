@@ -3,13 +3,13 @@
  * Done client-side on purpose: the serverless function then only receives
  * text (small, fast, no 4.5MB body-limit problems with big scanned PDFs).
  *
- * pdfjs-dist is ~700KB, so it's imported dynamically — the home screen
+ * pdfjs-dist is ~700KB, so it's imported dynamically - the home screen
  * stays light and the library only downloads when a file is chosen.
  *
  * Each page is prefixed with a [SDS page N] marker so the extraction model
  * can cite source locations by page and notice missing / "continued" pages.
  *
- * Note: scanned/image-only PDFs produce little or no text — callers should
+ * Note: scanned/image-only PDFs produce little or no text - callers should
  * treat a near-empty result as "this PDF can't be read automatically".
  */
 

@@ -10,7 +10,7 @@ import type { ExtractedIndexRow, SDSSourceKind } from "@shared/types";
 export interface PendingReview {
   file: File;
   extracted: ExtractedIndexRow;
-  /** How the PDF got here — recorded on the saved record. */
+  /** How the PDF got here - recorded on the saved record. */
   source: SDSSourceKind;
 }
 

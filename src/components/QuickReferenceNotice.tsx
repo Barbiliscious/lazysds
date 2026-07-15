@@ -1,6 +1,6 @@
 /**
  * The mandatory notice from the standard. Shown above the register and on
- * the approval/detail screen — every surface that displays extracted values.
+ * the approval/detail screen - every surface that displays extracted values.
  */
 export default function QuickReferenceNotice({ className = "" }: { className?: string }) {
   return (

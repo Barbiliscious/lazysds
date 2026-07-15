@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════════
- *  EDIT ME — trusted SDS domain whitelist
+ *  EDIT ME - trusted SDS domain whitelist
  * ═══════════════════════════════════════════════════════════════════
  * The web-search adapter (Flow B) only accepts PDF results hosted on
  * these domains. Add a manufacturer's site here to start trusting it;

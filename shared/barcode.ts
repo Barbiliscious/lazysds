@@ -1,5 +1,5 @@
 /**
- * Barcode (GTIN) helpers — pure and shared so the scan page can validate
+ * Barcode (GTIN) helpers - pure and shared so the scan page can validate
  * before calling the API and the API can validate again server-side.
  */
 
@@ -9,8 +9,8 @@ export function normalizeBarcode(raw: string): string {
 }
 
 /**
- * True for a plausible retail barcode: 8–14 digits (EAN-8, UPC-A, EAN-13,
- * GTIN-14) with a valid GS1 check digit — the standard mod-10 checksum
+ * True for a plausible retail barcode: 8-14 digits (EAN-8, UPC-A, EAN-13,
+ * GTIN-14) with a valid GS1 check digit - the standard mod-10 checksum
  * computed right-to-left with alternating 3/1 weights.
  */
 export function isValidBarcode(raw: string): boolean {

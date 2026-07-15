@@ -5,7 +5,7 @@ import { checkSdsUrl } from "../shared/sds-url.js";
 
 /**
  * POST /api/fetch-pdf
- * Body: { url: string } — a link to an SDS PDF on a trusted domain.
+ * Body: { url: string } - a link to an SDS PDF on a trusted domain.
  * Response: { filename: string, base64: string } or { error: string }.
  *
  * Exists because manufacturers' sites don't send CORS headers, so the
@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  // The site may have redirected — the place we actually landed must be
+  // The site may have redirected - the place we actually landed must be
   // trusted too, or the whitelist would be trivial to bypass.
   const landed = checkSdsUrl(response.url);
   if (!landed.ok) {
@@ -67,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  // Trust the file's own magic bytes, not the Content-Type header —
+  // Trust the file's own magic bytes, not the Content-Type header -
   // plenty of servers label PDFs as octet-stream or even text/html.
   const isPdf = bytes.length > 5 && String.fromCharCode(...bytes.subarray(0, 5)) === "%PDF-";
   if (!isPdf) {

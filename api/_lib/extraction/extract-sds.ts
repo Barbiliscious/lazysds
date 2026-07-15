@@ -19,7 +19,7 @@ const MAX_ATTEMPTS = 2;
  * Runs the extraction with a structured-output format: the API constrains the
  * response to extractedSDSSchema server-side, so the model cannot return
  * prose or a malformed shape. Thinking is disabled to keep the call fast,
- * cheap, and deterministic — this is careful reading, not open reasoning.
+ * cheap, and deterministic - this is careful reading, not open reasoning.
  * parsed_output is additionally validated by zod. One retry as belt-and-braces.
  */
 export async function extractSDS(

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ExtractedIndexRow, SDSField, SDSFieldKey, SDSIndexRecord } from "@shared/types";
-import { cellText, registerToCsv } from "./export-register";
+import { buildRegisterWorkbook, cellText, registerToCsv } from "./export-register";
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer", "supplier_importer", "product_codes", "issue_date",
@@ -44,6 +44,16 @@ describe("cellText", () => {
     expect(cellText(r, { field: "hazardous_chemical" })).toBe("NOT STATED");
   });
 
+  it("uses controlled pictogram wording and normal hyphens in exported values", () => {
+    const r = makeRecord({
+      pictograms: stated("Flammable; Corrosive"),
+      hazard_statements: stated("H318 – Causes serious eye damage — keep protected"),
+    });
+    expect(cellText(r, { field: "pictograms" })).toBe("Flammable; Corrosive");
+    expect(cellText(makeRecord(), { field: "pictograms" })).toBe("Not stated");
+    expect(cellText(r, { field: "hazard_statements" })).toBe("H318 - Causes serious eye damage - keep protected");
+  });
+
   it("combines manufacturer and supplier, de-duplicating when identical", () => {
     const r1 = makeRecord({ manufacturer: stated("Reckitt"), supplier_importer: stated("Bunnings") });
     expect(cellText(r1, { combined: "manufacturer_supplier" })).toBe("Reckitt / Bunnings");
@@ -74,6 +84,8 @@ describe("registerToCsv", () => {
     expect(header).toHaveLength(20);
     expect(header[0]).toBe("SDS Record ID");
     expect(header).toContain("Manufacturer / Supplier / Importer");
+    expect(header).toContain("Issue Date");
+    expect(header).not.toContain("Issue / Revision Date");
     expect(header[header.length - 1]).toBe("SDS Link");
   });
 
@@ -88,5 +100,26 @@ describe("registerToCsv", () => {
     const csv = registerToCsv([makeRecord(), makeRecord()]);
     expect(csv.endsWith("\r\n")).toBe(true);
     expect(csv.trimEnd().split("\r\n")).toHaveLength(3);
+  });
+});
+
+describe("buildRegisterWorkbook", () => {
+  it("writes and reads back the exact 20-column workbook layout", async () => {
+    const workbook = await buildRegisterWorkbook([makeRecord()]);
+    const buffer = await workbook.xlsx.writeBuffer();
+    const { Workbook } = await import("exceljs");
+    const loaded = new Workbook();
+    await loaded.xlsx.load(buffer);
+
+    const sheet = loaded.getWorksheet("SDS Index");
+    expect(sheet).toBeDefined();
+    expect(sheet?.columnCount).toBe(20);
+    expect(sheet?.getCell(3, 5).value).toBe("Issue Date");
+    expect(sheet?.getCell(3, 20).value).toBe("SDS Link");
+    expect(sheet?.getCell(4, 20).value).toEqual({
+      text: "https://example.com/sds.pdf",
+      hyperlink: "https://example.com/sds.pdf",
+    });
+    expect(sheet?.views[0]).toMatchObject({ state: "frozen", xSplit: 2, ySplit: 3 });
   });
 });

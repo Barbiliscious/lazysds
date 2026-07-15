@@ -6,7 +6,7 @@ import { extractSDS } from "./_lib/extraction/extract-sds.js";
 
 /**
  * POST /api/extract
- * Body: { text: string } — plain text already extracted from the SDS PDF.
+ * Body: { text: string } - plain text already extracted from the SDS PDF.
  * Response: { extracted: ExtractedSDS } or { error: string }.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -29,9 +29,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   } catch (err) {
     // Map SDK errors to sensible statuses; keep messages user-safe.
     if (err instanceof Anthropic.RateLimitError) {
-      res.status(429).json({ error: "The AI service is busy right now — try again in a minute." });
+      res.status(429).json({ error: "The AI service is busy right now - try again in a minute." });
     } else if (err instanceof Anthropic.APIConnectionError || err instanceof Anthropic.InternalServerError) {
-      res.status(502).json({ error: "The AI service could not be reached — try again shortly." });
+      res.status(502).json({ error: "The AI service could not be reached - try again shortly." });
     } else {
       console.error("extract failed:", err);
       res.status(500).json({ error: "Reading the document failed. Try again, or check the PDF." });
