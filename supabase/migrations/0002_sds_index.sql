@@ -29,6 +29,12 @@ create table public.sds_index (
 
 alter table public.sds_index enable row level security;
 
+-- Supabase projects created after April 2026 do not expose new public tables
+-- automatically. Grant only the two operations this no-account app needs;
+-- RLS policies below still decide which rows those operations can access.
+revoke all privileges on table public.sds_index from anon;
+grant select, insert on table public.sds_index to anon;
+
 -- Same deliberate access model as sds_records (see CLAUDE.md): no accounts.
 -- Anyone with the URL can read the register and add reviewed rows; nothing
 -- can be updated or deleted from the browser — corrections happen in the
