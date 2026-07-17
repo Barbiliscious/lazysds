@@ -1,13 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ExtractedIndexRow, SDSField, SDSFieldKey, SDSIndexRecord } from "@shared/types";
-import { buildRegisterWorkbook, cellText, registerToCsv } from "./export-register";
+import { buildRegisterWorkbook, cellText, registerToCsv, toRichLines } from "./export-register";
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
-  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
-  "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
-  "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
-  "storage", "incompatibilities", "fire_media", "dilution_condition",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word",
+  "hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media",
 ];
 
 const notStated: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };
@@ -44,28 +42,14 @@ describe("cellText", () => {
     expect(cellText(r, { field: "hazardous_chemical" })).toBe("NOT STATED");
   });
 
-  it("uses controlled pictogram wording and normal hyphens in exported values", () => {
-    const r = makeRecord({
-      pictograms: stated("Flammable; Corrosive"),
-      hazard_statements: stated("H318 – Causes serious eye damage — keep protected"),
-    });
-    expect(cellText(r, { field: "pictograms" })).toBe("Flammable; Corrosive");
-    expect(cellText(makeRecord(), { field: "pictograms" })).toBe("Not stated");
+  it("normalises typography dashes in app-generated values", () => {
+    const r = makeRecord({ hazard_statements: stated("H318 – Causes serious eye damage — keep protected") });
     expect(cellText(r, { field: "hazard_statements" })).toBe("H318 - Causes serious eye damage - keep protected");
   });
 
-  it("renders the single manufacturer, supplier or importer field", () => {
-    const record = makeRecord({ manufacturer_supplier_importer: stated("Reckitt") });
-    expect(cellText(record, { field: "manufacturer_supplier_importer" })).toBe("Reckitt");
-  });
-
-  it("combines the present PPE sub-fields, skipping not-stated ones", () => {
-    const r = makeRecord({
-      ppe_eyes_face: stated("REQUIRED: Splash goggles."),
-      ppe_hands: stated("REQUIRED: Nitrile gloves."),
-    });
-    expect(cellText(r, { combined: "ppe" })).toBe("Eyes / Face - REQUIRED: Splash goggles.\nHands - REQUIRED: Nitrile gloves.");
-    expect(cellText(makeRecord(), { combined: "ppe" })).toBe("NOT STATED");
+  it("renders the single manufacturer / supplier / importer field", () => {
+    const r = makeRecord({ manufacturer_supplier_importer: stated("Reckitt") });
+    expect(cellText(r, { field: "manufacturer_supplier_importer" })).toBe("Reckitt");
   });
 
   it("renders record-derived columns", () => {
@@ -81,17 +65,15 @@ describe("registerToCsv", () => {
     const header = (registerToCsv([]).split("\r\n")[0] ?? "").split(",");
     expect(header).toHaveLength(20);
     expect(header[0]).toBe("SDS Record ID");
-    expect(header).toContain("Manufacturer / Supplier / Importer");
-    expect(header).toContain("Issue Date");
-    expect(header).not.toContain("Issue / Revision Date");
+    expect(header).toContain("Signal Word");
+    expect(header).toContain("PPE");
+    expect(header).not.toContain("Pictograms");
     expect(header[header.length - 1]).toBe("SDS Link");
   });
 
-  it("quotes cells containing commas, quotes or newlines (combined PPE)", () => {
-    const csv = registerToCsv([
-      makeRecord({ ppe_eyes_face: stated("REQUIRED: goggles"), ppe_hands: stated("REQUIRED: gloves") }),
-    ]);
-    expect(csv).toContain('"Eyes / Face - REQUIRED: goggles\nHands - REQUIRED: gloves"');
+  it("quotes cells containing commas, quotes or newlines (multi-line PPE)", () => {
+    const csv = registerToCsv([makeRecord({ ppe: stated("REQUIRED:\nEyes / Face - goggles") })]);
+    expect(csv).toContain('"REQUIRED:\nEyes / Face - goggles"');
   });
 
   it("produces one CRLF-terminated line per record plus the header", () => {
@@ -101,8 +83,20 @@ describe("registerToCsv", () => {
   });
 });
 
+describe("toRichLines", () => {
+  it("bolds group headers and line labels, leaves body text plain", () => {
+    const parts = toRichLines("REQUIRED:\nEyes / Face - Splash goggles.\nplain trailing line");
+    expect(parts.map((p) => [Boolean(p.font.bold), p.text])).toEqual([
+      [true, "REQUIRED:\n"],
+      [true, "Eyes / Face"],
+      [false, " - Splash goggles.\n"],
+      [false, "plain trailing line"],
+    ]);
+  });
+});
+
 describe("buildRegisterWorkbook", () => {
-  it("writes and reads back the exact 20-column workbook layout", async () => {
+  it("writes and reads back the 20-column workbook layout", async () => {
     const workbook = await buildRegisterWorkbook([makeRecord()]);
     const buffer = await workbook.xlsx.writeBuffer();
     const { Workbook } = await import("exceljs");

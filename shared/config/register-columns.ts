@@ -12,15 +12,9 @@ import type { SDSFieldKey } from "../types";
  *  - `ref` is where the cell text comes from:
  *      { field: <key> }    → an extracted SDS field's value/status
  *      { record: <token> } → a value derived in code (id, dates, admin, link)
- *      { combined: <name> }→ several fields merged into one column
  *  - Reorder / delete entries to change the sheet. The renderer (banner,
- *    bands, merged PPE, and hyperlink) lives in
+ *    bands, bold line-labels in PPE / First Aid, hyperlink) lives in
  *    src/lib/export-register.ts.
- *
- * Note: this condensed view intentionally omits some extracted columns
- * (Signal Word, Poisons Schedule, Transport UN/Class/Group, Incompatibilities,
- * Dilution/Use Condition, Currency Flag). They are still extracted, shown on
- * the approval screen, and stored - add a row here to surface any of them.
  */
 
 export type RecordColumn =
@@ -32,12 +26,7 @@ export type RecordColumn =
   | "verified_at"
   | "sds_link";
 
-export type CombinedColumn = "ppe";
-
-export type ColumnRef =
-  | { field: SDSFieldKey }
-  | { record: RecordColumn }
-  | { combined: CombinedColumn };
+export type ColumnRef = { field: SDSFieldKey } | { record: RecordColumn };
 
 export interface RegisterColumn {
   group: string;
@@ -54,9 +43,9 @@ export const REGISTER_COLUMNS: RegisterColumn[] = [
   { group: "DOCUMENT CONTROL", header: "Review Date", ref: { record: "review_date" } },
   { group: "HAZARD AT A GLANCE", header: "Hazardous Chemical?", ref: { field: "hazardous_chemical" } },
   { group: "HAZARD AT A GLANCE", header: "Dangerous Goods?", ref: { field: "dangerous_goods" } },
-  { group: "HAZARD AT A GLANCE", header: "Pictograms", ref: { field: "pictograms" } },
+  { group: "HAZARD AT A GLANCE", header: "Signal Word", ref: { field: "signal_word" } },
   { group: "HAZARD AT A GLANCE", header: "Hazard Statements", ref: { field: "hazard_statements" } },
-  { group: "QUICK RESPONSE", header: "PPE - Eyes / Face / Hands / Respiratory / Body", ref: { combined: "ppe" } },
+  { group: "QUICK RESPONSE", header: "PPE", ref: { field: "ppe" } },
   { group: "QUICK RESPONSE", header: "First Aid - Key Points", ref: { field: "first_aid" } },
   { group: "QUICK RESPONSE", header: "Spill - Key Points", ref: { field: "spill" } },
   { group: "QUICK RESPONSE", header: "Storage - Key Points", ref: { field: "storage" } },

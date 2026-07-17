@@ -4,13 +4,9 @@ import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "@shared/types";
 import {
   CURRENCY_DISPLAY,
   EXTRACTION_STATUS_DISPLAY,
-  PICTOGRAM_NONE,
-  PICTOGRAM_OPTIONS,
   STATUS_DISPLAY,
   fieldHeader,
   normaliseDisplayDashes,
-  parsePictogramOptions,
-  type PictogramOption,
 } from "@shared/sds-fields";
 import { computeCurrencyFlag, parseSdsDate, resolveReviewDate } from "@shared/sds-dates";
 import { getPendingReview, clearPendingReview } from "@/lib/pending-review";
@@ -36,31 +32,25 @@ type SaveState =
 // Fields whose values are typically long - render as a textarea.
 const LONG_FIELDS = new Set<SDSFieldKey>([
   "hazard_statements",
-  "ppe_eyes_face",
-  "ppe_hands",
-  "ppe_respiratory",
-  "ppe_body",
+  "ppe",
   "first_aid",
   "spill",
   "storage",
-  "incompatibilities",
   "fire_media",
-  "dilution_condition",
 ]);
+
+// Generous textarea heights for the structured multi-line fields.
+const FIELD_ROWS: Partial<Record<SDSFieldKey, number>> = {
+  hazard_statements: 4,
+  ppe: 6,
+  first_aid: 5,
+};
 
 const SECTIONS: { title: string; keys: SDSFieldKey[] }[] = [
   { title: "Identification", keys: ["product_name", "manufacturer_supplier_importer", "product_codes"] },
   { title: "Dates", keys: ["issue_date", "review_date_stated"] },
-  {
-    title: "Hazard at a glance",
-    keys: ["hazardous_chemical", "dangerous_goods", "signal_word", "pictograms", "hazard_statements", "poisons_schedule"],
-  },
-  { title: "Transport (Dangerous Goods)", keys: ["un_number", "dg_class", "packing_group"] },
-  {
-    title: "Quick response",
-    keys: ["ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill", "storage", "incompatibilities", "fire_media"],
-  },
-  { title: "Conditions", keys: ["dilution_condition"] },
+  { title: "Hazard at a glance", keys: ["hazardous_chemical", "dangerous_goods", "signal_word", "hazard_statements"] },
+  { title: "Quick response", keys: ["ppe", "first_aid", "spill", "storage", "fire_media"] },
 ];
 
 export default function ReviewPage() {
@@ -118,21 +108,6 @@ export default function ReviewPage() {
       return { ...f, [key]: next };
     });
 
-  // Pictograms use controlled options rather than accepting arbitrary text.
-  const setPictograms = (options: PictogramOption[] | null) =>
-    setFields((current) => {
-      if (!current) return current;
-      const original = pending.extracted.pictograms;
-      const pictograms: SDSField = options && options.length > 0
-        ? {
-            value: options.join("; "),
-            status: "STATED",
-            excerpt: original.excerpt,
-            location: original.location,
-          }
-        : { value: null, status: "NOT_STATED", excerpt: null, location: null };
-      return { ...current, pictograms };
-    });
 
   // Put each field beside the first PDF page cited by the AI. A calculated
   // Review Date stays with the Issue Date because that is its source.
@@ -146,21 +121,10 @@ export default function ReviewPage() {
   };
 
   const renderReviewField = (key: SDSFieldKey) => {
-    if (key === "pictograms") {
-      return (
-        <PictogramField
-          field={fields.pictograms}
-          original={pending.extracted.pictograms}
-          onChange={setPictograms}
-        />
-      );
-    }
-
     if (key === "review_date_stated" && currency) {
       return (
         <ReviewDateField
           field={fields.review_date_stated}
-          original={pending.extracted.review_date_stated}
           resolvedDate={currency.reviewDate}
           calculated={currency.calculated}
           onChange={(text) => editField("review_date_stated", text)}
@@ -403,7 +367,7 @@ function FieldRow({
       {LONG_FIELDS.has(fieldKey) ? (
         <textarea
           id={id}
-          rows={2}
+          rows={FIELD_ROWS[fieldKey] ?? 2}
           className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm"
           value={normaliseDisplayDashes(field.value ?? "")}
           onChange={(e) => onChange(e.target.value)}
@@ -418,12 +382,6 @@ function FieldRow({
           placeholder={placeholder}
         />
       )}
-      {(original.excerpt || original.location) && (
-        <p className="mt-1 text-xs text-slate-500">
-          {original.location && <span className="font-medium">{original.location}: </span>}
-          {original.excerpt && <span className="italic">&ldquo;{original.excerpt}&rdquo;</span>}
-        </p>
-      )}
       {invalidDate && (
         <p className="mt-1 text-xs text-amber-800">Use YYYY-MM-DD, YYYY-MM or YYYY.</p>
       )}
@@ -433,13 +391,11 @@ function FieldRow({
 
 function ReviewDateField({
   field,
-  original,
   resolvedDate,
   calculated,
   onChange,
 }: {
   field: SDSField;
-  original: SDSField;
   resolvedDate: string | null;
   calculated: boolean;
   onChange: (text: string) => void;
@@ -469,77 +425,7 @@ function ReviewDateField({
               ? "Calculated from Issue Date"
               : "Not available - check Issue Date"}
       </p>
-      {fromSds && (original.excerpt || original.location) && (
-        <p className="mt-1 text-xs text-slate-500">
-          {original.location && <span className="font-medium">{original.location}: </span>}
-          {original.excerpt && <span className="italic">&ldquo;{original.excerpt}&rdquo;</span>}
-        </p>
-      )}
     </div>
   );
 }
 
-function PictogramField({
-  field,
-  original,
-  onChange,
-}: {
-  field: SDSField;
-  original: SDSField;
-  onChange: (options: PictogramOption[] | null) => void;
-}) {
-  const selected = parsePictogramOptions(field.value);
-  const flagged = original.status !== "STATED";
-
-  const toggleOption = (option: PictogramOption) => {
-    if (option === PICTOGRAM_NONE) {
-      onChange(selected.includes(PICTOGRAM_NONE) ? null : [PICTOGRAM_NONE]);
-      return;
-    }
-    const withoutNone = selected.filter((value) => value !== PICTOGRAM_NONE);
-    const next = withoutNone.includes(option)
-      ? withoutNone.filter((value) => value !== option)
-      : [...withoutNone, option];
-    onChange(next.length > 0 ? next : null);
-  };
-
-  return (
-    <fieldset className={flagged ? "rounded-lg bg-amber-50 border border-amber-300 p-3" : ""}>
-      <legend className="font-medium text-slate-700">
-        Pictograms
-        {flagged && (
-          <span className="ml-2 rounded bg-amber-200 px-2 py-0.5 text-xs font-semibold text-amber-900">
-            {STATUS_DISPLAY[original.status]}
-          </span>
-        )}
-      </legend>
-      <p className="mb-2 text-xs text-slate-500">Select only the standard pictograms shown in the PDF.</p>
-      <div className="grid gap-2 sm:grid-cols-2">
-        {PICTOGRAM_OPTIONS.map((option) => (
-          <label key={option} className="flex items-center gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-sm">
-            <input
-              type="checkbox"
-              checked={selected.includes(option)}
-              onChange={() => toggleOption(option)}
-            />
-            {option}
-          </label>
-        ))}
-        <label className="flex items-center gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-sm">
-          <input
-            type="checkbox"
-            checked={field.status === "NOT_STATED"}
-            onChange={() => onChange(null)}
-          />
-          Not stated
-        </label>
-      </div>
-      {(original.excerpt || original.location) && (
-        <p className="mt-2 text-xs text-slate-500">
-          {original.location && <span className="font-medium">{original.location}: </span>}
-          {original.excerpt && <span className="italic">&ldquo;{original.excerpt}&rdquo;</span>}
-        </p>
-      )}
-    </fieldset>
-  );
-}

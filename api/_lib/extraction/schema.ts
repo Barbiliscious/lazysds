@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { ExtractedIndexRow } from "../../../shared/types.js";
-import { PICTOGRAM_VOCAB } from "../../../shared/sds-fields.js";
 
 /**
  * Zod mirror of ExtractedIndexRow in shared/types.ts. Used two ways:
@@ -37,18 +36,6 @@ export const sdsField = z.object({
   location: z.string().nullable(),
 });
 
-const regexEscape = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-const pictogramTerm = PICTOGRAM_VOCAB.map(regexEscape).join("|");
-const pictogramList = z.string().regex(
-  new RegExp(`^(?:${pictogramTerm})(?:; (?:${pictogramTerm}))*$`),
-  "Pictograms must use the controlled vocabulary separated by semicolon-space",
-);
-
-/** A stated pictogram value is either None or one or more controlled terms. */
-export const pictogramField = sdsField.extend({
-  value: z.union([z.literal("None"), pictogramList]).nullable(),
-});
-
 export const extractedSDSSchema = z.object({
   product_name: sdsField,
   manufacturer_supplier_importer: sdsField,
@@ -58,22 +45,12 @@ export const extractedSDSSchema = z.object({
   hazardous_chemical: sdsField,
   dangerous_goods: sdsField,
   signal_word: sdsField,
-  pictograms: pictogramField,
   hazard_statements: sdsField,
-  poisons_schedule: sdsField,
-  un_number: sdsField,
-  dg_class: sdsField,
-  packing_group: sdsField,
-  ppe_eyes_face: sdsField,
-  ppe_hands: sdsField,
-  ppe_respiratory: sdsField,
-  ppe_body: sdsField,
+  ppe: sdsField,
   first_aid: sdsField,
   spill: sdsField,
   storage: sdsField,
-  incompatibilities: sdsField,
   fire_media: sdsField,
-  dilution_condition: sdsField,
   extraction_status: extractionStatus,
   review_reasons: z.array(z.string()),
 });

@@ -8,45 +8,21 @@ import {
   EXTRACTION_STATUS_DISPLAY,
   fieldCellText,
   normaliseDisplayDashes,
-  pictogramCellText,
 } from "@shared/sds-fields";
-import type { SDSField, SDSIndexRecord } from "@shared/types";
+import type { SDSIndexRecord } from "@shared/types";
 
 /**
  * Turns register records into downloadable CSV / XLSX files. The columns,
  * order, and group bands are driven by REGISTER_COLUMNS
  * (shared/config/register-columns.ts) - edit that file, not this one. The
  * XLSX matches the Grampians example workbook: a banner row, navy group
- * bands, a merged PPE column, and a hyperlinked
- * SDS Link. CSV is the same columns, flat.
+ * bands, bold line-labels inside the PPE / First Aid cells, and a
+ * hyperlinked SDS Link. CSV is the same columns, flat.
  */
-
-const PPE_SUBFIELDS: [keyof SDSIndexRecord["extracted"], string][] = [
-  ["ppe_eyes_face", "Eyes / Face"],
-  ["ppe_hands", "Hands"],
-  ["ppe_respiratory", "Respiratory"],
-  ["ppe_body", "Body"],
-];
-
-/** The present PPE sub-fields as {label, text} lines (empty if none stated). */
-function ppeLines(record: SDSIndexRecord): { label: string; text: string }[] {
-  return PPE_SUBFIELDS.flatMap(([key, label]) => {
-    const field = record.extracted[key] as SDSField;
-    return field.status === "NOT_STATED" ? [] : [{ label, text: fieldCellText(field) }];
-  });
-}
 
 /** One cell's plain text for a given column - used by CSV and as a fallback. */
 export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
-  if ("field" in ref) {
-    return ref.field === "pictograms"
-      ? pictogramCellText(record.extracted.pictograms)
-      : fieldCellText(record.extracted[ref.field]);
-  }
-  if ("combined" in ref) {
-    const lines = ppeLines(record);
-    return lines.length > 0 ? lines.map((l) => `${l.label} - ${l.text}`).join("\n") : "NOT STATED";
-  }
+  if ("field" in ref) return fieldCellText(record.extracted[ref.field]);
   switch (ref.record) {
     case "record_id":
       return record.record_id;
@@ -118,7 +94,33 @@ const BANNER_TEXT = "FF7A2B2B";
 const LINK_BLUE = "FF0563C1";
 
 // Column widths from the example workbook, in column order.
-const WIDTHS = [22, 30, 22, 13, 14, 13, 13, 14, 20, 46, 34, 46, 34, 32, 30, 20, 38, 13, 13, 26];
+const WIDTHS = [22, 30, 22, 13, 14, 13, 13, 14, 12, 46, 40, 46, 34, 32, 30, 20, 38, 13, 13, 26];
+
+// The multi-line structured fields whose line-labels get bolded in Excel:
+// group headers ("REQUIRED:") bold the whole line; "Label - text" bolds the label.
+const BOLD_LABEL_FIELDS = new Set(["ppe", "first_aid"]);
+
+type RichTextPart = { font: Record<string, unknown>; text: string };
+
+/** "REQUIRED:\nEyes / Face - ..." → rich text with bold labels. */
+export function toRichLines(value: string): RichTextPart[] {
+  const lines = value.split("\n");
+  return lines.flatMap((line, idx) => {
+    const nl = idx < lines.length - 1 ? "\n" : "";
+    const trimmed = line.trim();
+    const dash = line.indexOf(" - ");
+    if (trimmed !== "" && trimmed.endsWith(":") && dash === -1) {
+      return [{ font: { ...ARIAL, bold: true }, text: line + nl }];
+    }
+    if (dash > 0) {
+      return [
+        { font: { ...ARIAL, bold: true }, text: line.slice(0, dash) },
+        { font: { ...ARIAL }, text: line.slice(dash) + nl },
+      ];
+    }
+    return [{ font: { ...ARIAL }, text: line + nl }];
+  });
+}
 
 type WorksheetLike = Awaited<ReturnType<typeof buildWorkbook>>["ws"];
 
@@ -173,23 +175,14 @@ async function buildWorkbook(records: SDSIndexRecord[]) {
       cell.font = { ...ARIAL };
       cell.alignment = { wrapText: true, vertical: "top" };
 
+      const text = cellText(record, c.ref);
       if ("record" in c.ref && c.ref.record === "sds_link") {
         cell.value = { text: record.pdf_url, hyperlink: record.pdf_url };
         cell.font = { ...ARIAL, underline: true, color: { argb: LINK_BLUE } };
-      } else if ("combined" in c.ref && c.ref.combined === "ppe") {
-        const lines = ppeLines(record);
-        if (lines.length === 0) {
-          cell.value = "NOT STATED";
-        } else {
-          cell.value = {
-            richText: lines.flatMap((l, idx) => [
-              { font: { ...ARIAL, bold: true }, text: l.label },
-              { font: { ...ARIAL }, text: ` - ${l.text}${idx < lines.length - 1 ? "\n" : ""}` },
-            ]),
-          };
-        }
+      } else if ("field" in c.ref && BOLD_LABEL_FIELDS.has(c.ref.field) && text.includes("\n")) {
+        cell.value = { richText: toRichLines(text) };
       } else {
-        cell.value = cellText(record, c.ref);
+        cell.value = text;
       }
     });
   });

@@ -5,10 +5,8 @@ import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "../../../shared/t
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
-  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
-  "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
-  "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
-  "storage", "incompatibilities", "fire_media", "dilution_condition",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word",
+  "hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media",
 ];
 
 const notStated: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };
@@ -33,27 +31,18 @@ describe("extractedSDSSchema", () => {
       product_name: { value: "Mortein Outdoor", status: "STATED", excerpt: "Product name: Mortein Outdoor", location: "Section 1, SDS page 1" },
       hazardous_chemical: { value: "YES", status: "STATED", excerpt: "Classified as hazardous.", location: "Section 2, SDS page 1" },
     });
-    const result = extractedSDSSchema.safeParse(row);
-    expect(result.success).toBe(true);
+    expect(extractedSDSSchema.safeParse(row).success).toBe(true);
   });
 
   it("accepts an all-not-stated row (every field a status, empty reasons)", () => {
     expect(extractedSDSSchema.safeParse(makeRow()).success).toBe(true);
   });
 
-  it("accepts only the controlled pictogram wording", () => {
-    const stated = (value: string): SDSField => ({ value, status: "STATED", excerpt: "Named pictograms", location: "Section 2" });
-    expect(extractedSDSSchema.safeParse(makeRow({ pictograms: stated("Flammable; Corrosive") })).success).toBe(true);
-    expect(extractedSDSSchema.safeParse(makeRow({ pictograms: stated("None") })).success).toBe(true);
-    expect(extractedSDSSchema.safeParse(makeRow({ pictograms: stated("Flame; Corrosion") })).success).toBe(false);
-  });
-
   it("rejects an out-of-vocabulary status", () => {
     const bad = makeRow();
     // @ts-expect-error deliberately invalid status token
     bad.product_name = { value: null, status: "MAYBE", excerpt: null, location: null };
-    const result = extractedSDSSchema.safeParse(bad);
-    expect(result.success).toBe(false);
+    expect(extractedSDSSchema.safeParse(bad).success).toBe(false);
   });
 
   it("rejects an out-of-vocabulary extraction status", () => {

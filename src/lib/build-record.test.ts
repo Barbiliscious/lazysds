@@ -4,10 +4,8 @@ import { buildRecord } from "./build-record";
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
-  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "pictograms",
-  "hazard_statements", "poisons_schedule", "un_number", "dg_class", "packing_group",
-  "ppe_eyes_face", "ppe_hands", "ppe_respiratory", "ppe_body", "first_aid", "spill",
-  "storage", "incompatibilities", "fire_media", "dilution_condition",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word",
+  "hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media",
 ];
 const notStated: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };
 const stated = (value: string): SDSField => ({ value, status: "STATED", excerpt: "x", location: "Section 1" });
