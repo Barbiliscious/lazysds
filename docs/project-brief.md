@@ -17,6 +17,10 @@ save an approved quick-reference register row.
 - Database: hosted Supabase `lazysds`; migrations `0001` and `0002` are the
   schema source of truth; new records use `public.sds_index`
 - No new database migration is required for barcode lookup
+- UPC Database fallback code is deployed, but UPC Database currently rejects
+  the token created on 16 July 2026 as invalid. Open Facts and the normal web
+  fallback continue to work. Do not create or replace a token without Aaron's
+  confirmation.
 
 ## Completed user flows
 
@@ -70,6 +74,19 @@ the browser.
 5. Test a known barcode and a barcode that needs the UPC Database fallback.
 6. Complete one genuine SDS end to end and inspect the downloaded Excel file.
 7. Confirm the saved row appears in the register before promoting Preview.
+
+## Preview verification - 17 July 2026
+
+- Deployment status: Ready
+- `/scan`: HTTP 200 and rendered correctly
+- `/api/health`: HTTP 200
+- Known barcode `3017620422003`: identified as Nutella through Open Facts
+- Invalid barcode: rejected with HTTP 400 and plain-language guidance
+- Browser console: no LazySDS errors
+- UPC-only test barcode: reached the fallback but returned no product
+- Direct UPC `/product` and `/account` checks: provider reported the current
+  token as invalid
+- Production: not promoted and unchanged
 
 ## Key files
 
