@@ -28,17 +28,17 @@ export to CSV/XLSX.
   search API; a keyed search adapter can replace the copy-paste hop later.
 - **Only have the product in hand?** `/scan` → point the camera at the
   barcode (or type the digits printed under it) → the free Open Products /
-  Food / Beauty Facts databases turn it into a product name → straight into
-  the find flow. Those databases are crowdsourced, so "not found" is
-  normal — the fallback is a web search for the barcode number.
+  Food / Beauty Facts databases are checked first → UPC Database is checked
+  only when they miss → straight into the find flow. If every database
+  misses, the fallback is a web search for the barcode number.
 - **The register** (`/register`) lists everything saved and exports to
   CSV or Excel.
 
 ## Tests
 
 `npm test` runs the Vitest suite. Tests live next to the code they cover
-(`*.test.ts`): the extraction schema, the export formatting/CSV escaping,
-and the trusted-URL checks.
+(`*.test.ts`): barcode providers and fallback order, the extraction schema,
+the export formatting/CSV escaping and the trusted-URL checks.
 
 ## Deployment (Vercel)
 
@@ -55,5 +55,16 @@ and the trusted-URL checks.
 - Export columns/headers: `shared/config/register-columns.ts`
 - Trusted SDS search domains: `shared/config/sds-domains.ts`
 - Extraction prompt/schema: `api/_lib/extraction/`
+- Barcode lookup order/adapters: `api/_lib/barcode/`
+
+## Current handoff
+
+The testing branch is `main-hxpggl`. Its stable Preview URL is:
+
+`https://lazysds-git-main-hxpggl-mullaneaa-7828s-projects.vercel.app`
+
+Production is deliberately kept separate until a genuine SDS completes the
+full scan/upload → extraction → approval → save → export test. See
+`docs/project-brief.md` for the current state and test checklist.
 
 More conventions and architecture notes: see `CLAUDE.md`.

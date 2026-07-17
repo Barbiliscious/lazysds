@@ -1,9 +1,9 @@
 /**
- * Barcode → product-name adapter backed by the Open Food Facts family -
+ * Barcode -> product-name adapter backed by the Open Food Facts family -
  * free, keyless, open-licence databases. Coverage of Australian workplace
  * chemicals is patchy (it's crowdsourced), so callers must treat null as a
- * normal answer, not an error. If a paid lookup API is ever adopted,
- * replace this file and keep the same exported signature.
+ * normal answer, not an error. The orchestrator in lookup.ts falls back to
+ * UPC Database when these free sources do not know the barcode.
  */
 
 export interface BarcodeProduct {
@@ -32,7 +32,7 @@ export function parseOpenFactsResponse(json: unknown): BarcodeProduct | null {
   return { name, brand: brand === "" ? null : brand };
 }
 
-export async function lookupBarcode(code: string): Promise<BarcodeProduct | null> {
+export async function lookupOpenFactsBarcode(code: string): Promise<BarcodeProduct | null> {
   for (const host of OPEN_FACTS_HOSTS) {
     try {
       const res = await fetch(

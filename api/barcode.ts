@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 // Relative imports in api/ need explicit .js extensions: these run as
 // native ES modules on Vercel ("type": "module"), where Node requires them.
-import { lookupBarcode } from "./_lib/barcode/open-facts.js";
+import { lookupBarcode } from "./_lib/barcode/lookup.js";
 import { isValidBarcode, normalizeBarcode } from "../shared/barcode.js";
 
 /**

@@ -15,9 +15,8 @@ acronym "SDS" — plain language and big tap targets everywhere.
   - Hosted project: `lazysds` (ref `ijqwxgjlnvatfgduohwo`, ap-southeast-2)
 - **AI:** Anthropic API, model `claude-sonnet-5`, called only from
   `api/extract.ts`. Extraction follows the Grampians Community Health
-  quick-reference standard (v1.1): one row per SDS, 24 SDS-derived fields
-  each carrying a verbatim source excerpt + location, controlled statuses
-  (never guess), deterministic dates/currency computed in code not by the AI.
+  quick-reference standard (v1.1), with verbatim source evidence and no
+  guessing.
 - **Hosting:** Vercel — project `lazysds` on team `mullaneaa-7828s-projects`,
   live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
   ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.
@@ -77,16 +76,10 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
 
 ## Build phases (stop after each for user review)
 
-1. ✅ Scaffold + CLAUDE.md + Supabase schema + hello-world deploy
+1. ✅ Scaffold + AGENTS.md + Supabase schema + hello-world deploy
 2. ✅ Flow A: upload → extract (`/api/extract`) → review screen → save
-3. ✅ Register list view + CSV/XLSX export
-4. ✅ Flow B (key-free version): `/find` page — guided web search in a new
-   tab + paste-a-PDF-link fetched by `/api/fetch-pdf` from whitelisted
-   domains only. Built without a search API on purpose (none viable);
-   a search adapter can replace the copy-paste hop later.
-5. ✅ Barcode scanning: `/scan` — camera scan (zxing, lazy-loaded) or typed
-   digits → `/api/barcode` → Open Products/Food/Beauty Facts first → optional
-   UPC Database fallback using the server-only `UPC_DATABASE_API_KEY` →
-   prefills `/find`; web-search-the-barcode fallback otherwise.
-   Google Custom Search was ruled out: closed to new customers, retiring 2027.
-6. ✅ Polish, tests, docs
+3. ✅ Register list view + 20-column CSV/XLSX export
+4. ✅ Flow B: guided web search + trusted PDF-link fetch
+5. ✅ Barcode scanning: Open Facts first, then the optional server-only
+   UPC Database fallback, then a normal web-search fallback
+6. ✅ Polish, tests and handoff documentation
