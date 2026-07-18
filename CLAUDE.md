@@ -15,9 +15,15 @@ acronym "SDS" — plain language and big tap targets everywhere.
   - Hosted project: `lazysds` (ref `ijqwxgjlnvatfgduohwo`, ap-southeast-2)
 - **AI:** Anthropic API, model `claude-sonnet-5`, called only from
   `api/extract.ts`. Extraction follows the Grampians Community Health
-  quick-reference standard (v1.1): one row per SDS, 24 SDS-derived fields
-  each carrying a verbatim source excerpt + location, controlled statuses
-  (never guess), deterministic dates/currency computed in code not by the AI.
+  quick-reference standard (v1.1): one row per SDS, a condensed set of
+  SDS-derived fields (the vocabulary lives in `shared/sds-fields.ts`, each
+  tagged `kind: "fact" | "summary"`). Fact fields (identification, dates,
+  classification, hazard statements) are copied verbatim; summary fields
+  (ppe, first_aid, spill, storage, fire_media) are plain-language summaries
+  that still keep numbers, times, temperatures, concentrations and
+  "do not"/urgency wording exact. Every value carries a source excerpt +
+  location; controlled statuses (never guess); dates/currency computed in
+  code, not by the AI.
 - **Hosting:** Vercel — project `lazysds` on team `mullaneaa-7828s-projects`,
   live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
   ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.
