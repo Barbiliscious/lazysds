@@ -48,14 +48,38 @@ export interface PdfSections {
   detected: boolean;
 }
 
-const HEADING_RE = /^section\s+(\d{1,2})\b/i;
+const SECTION_PREFIX_RE = /^section\s+(\d{1,2})\b/i;
+const NUMBERED_RE = /^(\d{1,2})[.)]?\s+(.+)$/;
 
-/** If a text line is an SDS section heading, return its number (1-16), else null. */
-export function parseSectionHeading(line: string): number | null {
-  const match = HEADING_RE.exec(line.trim());
-  if (!match?.[1]) return null;
-  const n = Number.parseInt(match[1], 10);
+/**
+ * The GHS 16-section titles (first significant word). Used to recognise
+ * "1. Identification" style headings without mistaking ordinary numbered
+ * lines ("5 litres of water") for a section heading.
+ */
+const GHS_TITLE_WORDS =
+  /^(identification|hazard|composition|first[-\s]?aid|fire[-\s]?fighting|fire|accidental|handling|exposure|physical|stability|toxicolog|ecolog|disposal|transport|regulat|other)/i;
+
+function inRange(raw: string): number | null {
+  const n = Number.parseInt(raw, 10);
   return n >= 1 && n <= 16 ? n : null;
+}
+
+/**
+ * If a text line is an SDS section heading, return its number (1-16), else null.
+ * Matches "SECTION N ..." and "N. Title" / "N Title" where Title is a known GHS
+ * section title.
+ */
+export function parseSectionHeading(line: string): number | null {
+  const text = line.trim();
+
+  const sectionMatch = SECTION_PREFIX_RE.exec(text);
+  if (sectionMatch?.[1]) return inRange(sectionMatch[1]);
+
+  const numbered = NUMBERED_RE.exec(text);
+  if (numbered?.[1] && numbered[2] && GHS_TITLE_WORDS.test(numbered[2].trim())) {
+    return inRange(numbered[1]);
+  }
+  return null;
 }
 
 /** Slices covering the vertical span from (startPage, startTop) to (endPage, endTop). */

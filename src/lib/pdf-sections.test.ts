@@ -7,8 +7,16 @@ describe("parseSectionHeading", () => {
     expect(parseSectionHeading("  Section 14 - Transport information")).toBe(14);
     expect(parseSectionHeading("SECTION 8 Exposure controls")).toBe(8);
   });
+  it("recognises 'N. Title' headings when the title is a GHS section title", () => {
+    expect(parseSectionHeading("1. Identification of the substance")).toBe(1);
+    expect(parseSectionHeading("14) Transport information")).toBe(14);
+    expect(parseSectionHeading("4 First aid measures")).toBe(4);
+    expect(parseSectionHeading("5 Firefighting measures")).toBe(5);
+  });
   it("ignores non-headings and out-of-range numbers", () => {
     expect(parseSectionHeading("1.2 Product identifier")).toBeNull();
+    expect(parseSectionHeading("2.2 Label elements")).toBeNull();
+    expect(parseSectionHeading("5 litres of water")).toBeNull(); // numbered, but not a GHS title
     expect(parseSectionHeading("Store below 30 C")).toBeNull();
     expect(parseSectionHeading("SECTION 20 Nope")).toBeNull();
   });
