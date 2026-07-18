@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "@shared/types";
 import {
   CURRENCY_DISPLAY,
   EXTRACTION_STATUS_DISPLAY,
+  FIELD_SPECS,
   STATUS_DISPLAY,
   fieldHeader,
   normaliseDisplayDashes,
@@ -11,9 +12,12 @@ import {
 import { computeCurrencyFlag, parseSdsDate, resolveReviewDate } from "@shared/sds-dates";
 import { getPendingReview, clearPendingReview } from "@/lib/pending-review";
 import { saveReviewedRecord } from "@/lib/save-record";
-import { firstSdsPage } from "@/lib/sds-page-locations";
-import PdfReviewPages from "@/components/PdfReviewPages";
+import { sectionForField } from "@/lib/sds-sections";
+import PdfSectionReview from "@/components/PdfSectionReview";
 import QuickReferenceNotice from "@/components/QuickReferenceNotice";
+
+/** Every field key, in the standard's column order. */
+const FIELD_KEYS: SDSFieldKey[] = FIELD_SPECS.map((s) => s.key);
 
 /**
  * Approval screen - nothing reaches the register without passing through
@@ -46,13 +50,6 @@ const FIELD_ROWS: Partial<Record<SDSFieldKey, number>> = {
   first_aid: 5,
 };
 
-const SECTIONS: { title: string; keys: SDSFieldKey[] }[] = [
-  { title: "Identification", keys: ["product_name", "manufacturer_supplier_importer", "product_codes"] },
-  { title: "Dates", keys: ["issue_date", "review_date_stated"] },
-  { title: "Hazard at a glance", keys: ["hazardous_chemical", "dangerous_goods", "signal_word", "hazard_statements"] },
-  { title: "Quick response", keys: ["ppe", "first_aid", "spill", "storage", "fire_media"] },
-];
-
 export default function ReviewPage() {
   const navigate = useNavigate();
   // Captured once so clearing the store after save doesn't blank the page.
@@ -60,7 +57,12 @@ export default function ReviewPage() {
   const [fields, setFields] = useState<ExtractedIndexRow | null>(pending?.extracted ?? null);
   const [reviewedBy, setReviewedBy] = useState("");
   const [saveState, setSaveState] = useState<SaveState>({ phase: "editing" });
-  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+  // Section numbers found in the PDF; null until it has been split.
+  const [detectedSections, setDetectedSections] = useState<number[] | null>(null);
+  const handleLoaded = useCallback(
+    (info: { pageCount: number; sectionNumbers: number[] }) => setDetectedSections(info.sectionNumbers),
+    [],
+  );
 
   // A refresh loses the in-memory hand-off - go back to the start.
   useEffect(() => {
@@ -109,16 +111,8 @@ export default function ReviewPage() {
     });
 
 
-  // Put each field beside the first PDF page cited by the AI. A calculated
-  // Review Date stays with the Issue Date because that is its source.
-  const citedPageForField = (key: SDSFieldKey): number | null => {
-    const citedPage = firstSdsPage(pending.extracted[key].location);
-    if (citedPage) return citedPage;
-    if (key === "review_date_stated" && currency?.calculated) {
-      return firstSdsPage(pending.extracted.issue_date.location);
-    }
-    return null;
-  };
+  // The SDS section each field belongs to (its cited section, else canonical).
+  const sectionOf = (key: SDSFieldKey): number => sectionForField(key, pending.extracted[key]);
 
   const renderReviewField = (key: SDSFieldKey) => {
     if (key === "review_date_stated" && currency) {
@@ -142,36 +136,22 @@ export default function ReviewPage() {
     );
   };
 
-  const renderPageReview = (pageNumber: number) => {
-    const pageSections = SECTIONS.map((section) => ({
-      ...section,
-      keys: section.keys.filter((key) => citedPageForField(key) === pageNumber),
-    })).filter((section) => section.keys.length > 0);
-
-    if (pageSections.length === 0) {
-      return (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          No AI values cite this page.
-        </div>
-      );
-    }
-
-    return pageSections.map((section) => (
-      <section key={section.title}>
-        <h2 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">{section.title}</h2>
-        <div className="flex flex-col gap-4">
-          {section.keys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
-        </div>
-      </section>
-    ));
+  // Fields for one SDS section, in column order. null if the section has none.
+  const renderSectionFields = (sectionNumber: number) => {
+    const keys = FIELD_KEYS.filter((key) => sectionOf(key) === sectionNumber);
+    if (keys.length === 0) return null;
+    return (
+      <div className="flex flex-col gap-4">
+        {keys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
+      </div>
+    );
   };
 
-  const uncitedKeys = pdfPageCount === null
+  // Fields whose section wasn't found as a heading in the PDF - shown at the
+  // end so nothing is hidden, even when detection misses a section.
+  const unmatchedKeys = detectedSections === null
     ? []
-    : SECTIONS.flatMap((section) => section.keys).filter((key) => {
-        const page = citedPageForField(key);
-        return page === null || page > pdfPageCount;
-      });
+    : FIELD_KEYS.filter((key) => !detectedSections.includes(sectionOf(key)));
 
   async function handleSave() {
     if (!pending || !fields || !canSave) return;
@@ -210,8 +190,8 @@ export default function ReviewPage() {
         <header className="mb-4">
           <h1 className="text-2xl font-bold text-slate-800">Check the details</h1>
           <p className="text-slate-600">
-            Scroll through the full PDF pages. Each AI value sits beside the first page it came from. <strong>Compare
-            every value against the PDF</strong> and fix anything wrong before you confirm.
+            The PDF is broken into its sections, with the AI's values for each section beside it. <strong>Compare
+            every value against the matching section</strong> and fix anything wrong before you confirm.
           </p>
         </header>
 
@@ -232,33 +212,22 @@ export default function ReviewPage() {
           )}
         </div>
 
-        <PdfReviewPages
+        <PdfSectionReview
           file={pending.file}
-          onPageCount={setPdfPageCount}
-          renderReview={(pageNumber) => renderPageReview(pageNumber)}
+          onLoaded={handleLoaded}
+          renderSectionFields={renderSectionFields}
         />
 
-        {uncitedKeys.length > 0 && (
+        {unmatchedKeys.length > 0 && (
           <div className="mt-10 grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             <div className="hidden lg:block" aria-hidden />
-            <section aria-label="Values needing manual page checking" className="rounded-lg border border-amber-300 bg-amber-50 p-4">
-              <h2 className="text-lg font-bold text-amber-900">Needs checking</h2>
+            <section aria-label="Values not tied to a section" className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+              <h2 className="text-lg font-bold text-amber-900">Not tied to a section</h2>
               <p className="mb-4 text-sm text-amber-800">
-                These values did not include a usable PDF page. Check them against the visible pages before saving.
+                These values weren't matched to a section heading in the PDF. Check them against the document before saving.
               </p>
-              <div className="flex flex-col gap-6">
-                {SECTIONS.map((section) => {
-                  const keys = section.keys.filter((key) => uncitedKeys.includes(key));
-                  if (keys.length === 0) return null;
-                  return (
-                    <div key={section.title}>
-                      <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-amber-800">{section.title}</h3>
-                      <div className="flex flex-col gap-4">
-                        {keys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex flex-col gap-4">
+                {unmatchedKeys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
               </div>
             </section>
           </div>
