@@ -3,6 +3,7 @@ import {
   type BarcodeProduct,
 } from "./open-facts.js";
 import { lookupUpcDatabaseBarcode } from "./upc-database.js";
+import { lookupEandataBarcode } from "./eandata.js";
 
 export type BarcodeLookup = (code: string) => Promise<BarcodeProduct | null>;
 
@@ -26,12 +27,23 @@ export async function firstBarcodeMatch(
   return null;
 }
 
-/** Open Facts first, then the allowance-limited UPC Database fallback. */
+/**
+ * Free, keyless Open*Facts first, then the allowance-limited keyed
+ * providers (UPC Database, then eandata) only when they're configured -
+ * their scarce daily credits are spent only on barcodes the free sources miss.
+ */
 export async function lookupBarcode(code: string): Promise<BarcodeProduct | null> {
   const lookups: BarcodeLookup[] = [lookupOpenFactsBarcode];
+
   const upcDatabaseKey = process.env.UPC_DATABASE_API_KEY?.trim();
   if (upcDatabaseKey) {
     lookups.push((barcode) => lookupUpcDatabaseBarcode(barcode, upcDatabaseKey));
   }
+
+  const eandataKey = process.env.EANDATA_API_KEY?.trim();
+  if (eandataKey) {
+    lookups.push((barcode) => lookupEandataBarcode(barcode, eandataKey));
+  }
+
   return firstBarcodeMatch(code, lookups);
 }
