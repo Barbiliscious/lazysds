@@ -160,13 +160,12 @@ function RecordCard({ record }: { record: SDSIndexRecord }) {
         <h2 className="text-lg font-semibold text-slate-800">
           {e.product_name.value ?? <span className="italic text-slate-400">Product name not stated</span>}
         </h2>
-        <HazardBadge field={e.hazardous_chemical} />
+        <SignalWordBadge field={e.signal_word} />
       </div>
 
       {organisation && <p className="mt-0.5 text-slate-600">{organisation}</p>}
 
       <div className="mt-2 flex flex-wrap gap-1.5">
-        <DgBadge field={e.dangerous_goods} />
         <CurrencyBadge flag={record.currency_flag} />
         {e.extraction_status !== "READY_FOR_HUMAN_REVIEW" && (
           <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">
@@ -187,29 +186,24 @@ function RecordCard({ record }: { record: SDSIndexRecord }) {
   );
 }
 
-function HazardBadge({ field }: { field: SDSField }) {
-  if (field.status === "STATED" && field.value?.toUpperCase() === "YES") {
-    return <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">Hazardous</span>;
+// The register card's one at-a-glance hazard signal. Hazardous Chemical and
+// Dangerous Goods are still extracted, reviewed, and exported separately
+// (they come from different SDS sections and can legitimately disagree) -
+// but for a fast-glance list, Signal Word alone conveys the severity.
+function SignalWordBadge({ field }: { field: SDSField }) {
+  const word = field.status === "STATED" ? field.value?.toUpperCase() : null;
+  if (word === "DANGER") {
+    return <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-semibold text-red-800">DANGER</span>;
   }
-  if (field.status === "STATED" && field.value?.toUpperCase() === "NO") {
-    return <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">Not hazardous</span>;
+  if (word === "WARNING") {
+    return <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-900">WARNING</span>;
+  }
+  if (word === "NONE") {
+    return <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">No signal word</span>;
   }
   return (
     <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
-      Hazard: {fieldCellText(field)}
-    </span>
-  );
-}
-
-function DgBadge({ field }: { field: SDSField }) {
-  const isDg = field.status === "STATED" && field.value?.toUpperCase() === "YES";
-  return (
-    <span
-      className={`rounded-full px-3 py-1 text-xs font-medium ${
-        isDg ? "bg-orange-100 text-orange-900" : "bg-slate-100 text-slate-600"
-      }`}
-    >
-      {isDg ? "Dangerous Good" : `DG: ${fieldCellText(field)}`}
+      Signal word: {fieldCellText(field)}
     </span>
   );
 }
