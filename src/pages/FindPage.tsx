@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { buildSdsSearchUrl } from "@shared/sds-url";
 import { fetchSdsPdf } from "@/lib/api-client";
 import { prepareReview } from "@/lib/sds-intake";
+import { startQueue } from "@/lib/review-queue";
 
 /**
  * Flow B: the user doesn't have the SDS PDF yet. Deliberately built
@@ -34,6 +35,7 @@ export default function FindPage() {
     setStep({ phase: "fetching-pdf" });
     try {
       const file = await fetchSdsPdf(pdfLink);
+      startQueue([file]); // single-item batch (clears any leftover upload queue)
       await prepareReview(file, "web_search", (phase) => setStep({ phase }));
       navigate("/review");
     } catch (err) {

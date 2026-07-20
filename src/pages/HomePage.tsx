@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { prepareReview } from "@/lib/sds-intake";
+import { startQueue } from "@/lib/review-queue";
 
 type Step =
   | { phase: "idle" }
@@ -11,19 +12,31 @@ type Step =
 /**
  * Home screen: one big obvious action. The user might be in a store
  * cupboard holding a can of fly spray - no jargon, big tap targets.
+ * Multiple PDFs can be picked at once; they're reviewed one after another.
  */
 export default function HomePage() {
   const [step, setStep] = useState<Step>({ phase: "idle" });
+  const [total, setTotal] = useState(1);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
   const busy = step.phase === "reading-pdf" || step.phase === "extracting";
 
-  const handleFile = useCallback(
-    async (file: File) => {
+  const handleFiles = useCallback(
+    async (fileList: File[]) => {
+      const pdfs = fileList.filter(
+        (f) => f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"),
+      );
+      if (pdfs.length === 0) {
+        setStep({ phase: "error", message: "Those don't look like PDFs. Safety sheets need to be PDF files." });
+        return;
+      }
+      setTotal(pdfs.length);
+      startQueue(pdfs);
       try {
-        await prepareReview(file, "upload", (phase) => setStep({ phase }));
+        // Review the first now; ReviewPage extracts the rest as you go.
+        await prepareReview(pdfs[0]!, "upload", (phase) => setStep({ phase }));
         navigate("/review");
       } catch (err) {
         setStep({
@@ -61,8 +74,8 @@ export default function HomePage() {
         onDrop={(e) => {
           e.preventDefault();
           setDragOver(false);
-          const file = e.dataTransfer.files[0];
-          if (file && !busy) void handleFile(file);
+          const files = Array.from(e.dataTransfer.files);
+          if (files.length > 0 && !busy) void handleFiles(files);
         }}
         className={`w-full max-w-md rounded-2xl border-4 border-dashed p-10 text-center transition-colors cursor-pointer select-none ${
           dragOver ? "border-blue-500 bg-blue-50" : "border-slate-300 bg-white hover:border-blue-400"
@@ -72,28 +85,35 @@ export default function HomePage() {
           <div className="flex flex-col items-center gap-3">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
             <p className="text-lg font-medium text-slate-700">
-              {step.phase === "reading-pdf" ? "Opening the PDF…" : "Reading the safety sheet…"}
+              {total > 1
+                ? `Reading sheet 1 of ${total}…`
+                : step.phase === "reading-pdf"
+                  ? "Opening the PDF…"
+                  : "Reading the safety sheet…"}
             </p>
-            <p className="text-sm text-slate-500">This usually takes a few seconds.</p>
+            <p className="text-sm text-slate-500">
+              {total > 1 ? "You'll check each one in turn." : "This usually takes a few seconds."}
+            </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-3">
             <span className="text-5xl" aria-hidden>
               📄
             </span>
-            <p className="text-xl font-semibold text-slate-800">Upload the safety sheet (PDF)</p>
-            <p className="text-slate-500">Tap here to choose a file, or drag one in.</p>
+            <p className="text-xl font-semibold text-slate-800">Upload safety sheets (PDF)</p>
+            <p className="text-slate-500">Tap to choose one or more, or drag them in.</p>
           </div>
         )}
         <input
           ref={fileInputRef}
           type="file"
           accept="application/pdf,.pdf"
+          multiple
           className="hidden"
           onChange={(e) => {
-            const file = e.target.files?.[0];
+            const files = Array.from(e.target.files ?? []);
             e.target.value = "";
-            if (file) void handleFile(file);
+            if (files.length > 0) void handleFiles(files);
           }}
         />
       </div>
