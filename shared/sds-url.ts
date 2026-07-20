@@ -94,12 +94,41 @@ export function checkSdsUrl(raw: string): UrlCheck {
   return { ok: true, hostname };
 }
 
+/** Whatever's known about the product, for building the strongest possible search. */
+export interface SdsSearchIdentifiers {
+  name: string;
+  brand?: string | null;
+  manufacturerProductCode?: string | null;
+  variant?: string | null;
+}
+
+/** Google search operators don't tolerate embedded quotes in a quoted term. */
+function quoted(term: string): string {
+  return `"${term.replace(/"/g, "").trim()}"`;
+}
+
 /**
  * A plain web search the user opens in a new tab - no search API needed.
- * filetype:pdf keeps results to direct PDF links whose address can be
- * copied straight back into the app.
+ * filetype:pdf keeps results to direct PDF links whose address can be copied
+ * straight back into the app. Builds the strongest query the identifiers
+ * support: the manufacturer's own product code plus brand narrows results to
+ * almost exactly one product; short of that, brand + name (+ variant) is the
+ * next best; a bare product name is the last resort (e.g. the worker typed a
+ * name manually with nothing else known).
  */
-export function buildSdsSearchUrl(productName: string): string {
-  const query = `"${productName.trim()}" safety data sheet filetype:pdf`;
+export function buildSdsSearchUrl(product: SdsSearchIdentifiers): string {
+  const sdsTerms = `(${quoted("SDS")} OR ${quoted("Safety Data Sheet")})`;
+  const name = product.name.trim();
+
+  let terms: string[];
+  if (product.manufacturerProductCode?.trim() && product.brand?.trim()) {
+    terms = [product.manufacturerProductCode, product.brand];
+  } else if (product.brand?.trim()) {
+    terms = [product.brand, name, product.variant].filter((t): t is string => Boolean(t?.trim()));
+  } else {
+    terms = [name];
+  }
+
+  const query = `${terms.map(quoted).join(" ")} ${sdsTerms} filetype:pdf`;
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }

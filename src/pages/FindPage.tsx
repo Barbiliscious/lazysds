@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { buildSdsSearchUrl } from "@shared/sds-url";
+import { buildSdsSearchUrl, type SdsSearchIdentifiers } from "@shared/sds-url";
 import { fetchSdsPdf } from "@/lib/api-client";
 import { prepareReview } from "@/lib/sds-intake";
 import { startQueue } from "@/lib/review-queue";
+import { getScannedProduct, clearScannedProduct } from "@/lib/scanned-product";
 
 /**
  * Flow B: the user doesn't have the SDS PDF yet. Deliberately built
@@ -12,6 +13,10 @@ import { startQueue } from "@/lib/review-queue";
  * it (any public https link; /api/fetch-pdf is SSRF-guarded, not domain-
  * whitelisted - see shared/sds-url.ts). When a search API key exists one
  * day, it can replace the copy-paste hop without changing this page.
+ *
+ * If the worker arrived here via a confirmed barcode scan, the extra
+ * identifiers (brand, manufacturer product code, variant) ride along to
+ * build a much stronger search than the product name alone.
  */
 
 type Step =
@@ -23,13 +28,34 @@ type Step =
 
 export default function FindPage() {
   const navigate = useNavigate();
-  // The scan page arrives here with ?product=… already worked out.
+  // The scan page arrives here with ?product=… already worked out, and
+  // (one-shot - cleared immediately so a later plain visit to /find doesn't
+  // silently reuse an old scan's brand/code against an unrelated name).
   const [searchParams] = useSearchParams();
-  const [productName, setProductName] = useState(searchParams.get("product") ?? "");
+  const [scanned] = useState(() => {
+    const product = getScannedProduct();
+    clearScannedProduct();
+    return product;
+  });
+  const [productName, setProductName] = useState(scanned?.name ?? searchParams.get("product") ?? "");
+  const [useScannedIdentifiers, setUseScannedIdentifiers] = useState(scanned !== null);
   const [pdfLink, setPdfLink] = useState("");
   const [step, setStep] = useState<Step>({ phase: "idle" });
 
   const busy = step.phase === "fetching-pdf" || step.phase === "reading-pdf" || step.phase === "extracting";
+
+  const extraIdentifiers = [scanned?.brand, scanned?.manufacturerProductCode, scanned?.variant].filter(
+    (v): v is string => Boolean(v),
+  );
+  const searchIdentifiers: SdsSearchIdentifiers =
+    useScannedIdentifiers && scanned
+      ? {
+          name: productName,
+          brand: scanned.brand,
+          manufacturerProductCode: scanned.manufacturerProductCode,
+          variant: scanned.variant,
+        }
+      : { name: productName };
 
   async function handleFetch() {
     setStep({ phase: "fetching-pdf" });
@@ -90,10 +116,28 @@ export default function FindPage() {
             </Link>{" "}
             and we'll try to work it out.
           </p>
+
+          {extraIdentifiers.length > 0 && useScannedIdentifiers && (
+            <p className="mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-900">
+              Using the scanned details to search more precisely: {extraIdentifiers.join(" · ")}.{" "}
+              <button type="button" onClick={() => setUseScannedIdentifiers(false)} className="underline">
+                Search by name only instead
+              </button>
+            </p>
+          )}
+          {extraIdentifiers.length > 0 && !useScannedIdentifiers && (
+            <p className="mt-2 text-sm text-slate-500">
+              Searching by product name only.{" "}
+              <button type="button" onClick={() => setUseScannedIdentifiers(true)} className="text-blue-600 underline">
+                Use the scanned details again
+              </button>
+            </p>
+          )}
+
           <button
             type="button"
             disabled={productName.trim().length === 0}
-            onClick={() => window.open(buildSdsSearchUrl(productName), "_blank", "noopener")}
+            onClick={() => window.open(buildSdsSearchUrl(searchIdentifiers), "_blank", "noopener")}
             className="mt-3 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300"
           >
             Search the web (opens a new tab)

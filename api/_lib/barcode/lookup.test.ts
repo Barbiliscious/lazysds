@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { firstBarcodeMatch, type BarcodeLookup } from "./lookup.js";
+import { firstBarcodeMatch, firstLabelledMatch, type BarcodeLookup } from "./lookup.js";
 
 describe("firstBarcodeMatch", () => {
   it("stops after the first database returns a product", async () => {
@@ -36,5 +36,33 @@ describe("firstBarcodeMatch", () => {
   it("returns null when every database misses", async () => {
     const miss: BarcodeLookup = async () => null;
     await expect(firstBarcodeMatch("4006381333931", [miss, miss])).resolves.toBeNull();
+  });
+});
+
+describe("firstLabelledMatch", () => {
+  it("tags the result with the id of whichever provider actually hit", async () => {
+    const miss: BarcodeLookup = async () => null;
+    const hit: BarcodeLookup = async () => ({ name: "Fly Spray", brand: "Mortein" });
+
+    await expect(
+      firstLabelledMatch("4006381333931", [
+        { id: "open_facts", run: miss },
+        { id: "eandata", run: hit },
+      ]),
+    ).resolves.toEqual({ product: { name: "Fly Spray", brand: "Mortein" }, providerId: "eandata" });
+  });
+
+  it("skips a provider that throws and returns null when every provider misses", async () => {
+    const failure: BarcodeLookup = async () => {
+      throw new Error("provider unavailable");
+    };
+    const miss: BarcodeLookup = async () => null;
+
+    await expect(
+      firstLabelledMatch("4006381333931", [
+        { id: "upc_database", run: failure },
+        { id: "open_facts", run: miss },
+      ]),
+    ).resolves.toBeNull();
   });
 });

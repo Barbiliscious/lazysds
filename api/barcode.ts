@@ -7,8 +7,10 @@ import { isValidBarcode, normalizeBarcode } from "../shared/barcode.js";
 /**
  * POST /api/barcode
  * Body: { code: string } - a retail barcode (EAN-8/13, UPC-A, GTIN-14).
- * Response: { product: { name, brand } | null } or { error: string }.
- * null is the normal "we don't know this one" answer, not a failure.
+ * Response: { product: ScannedProduct | null } or { error: string }.
+ * null is the normal "we don't know this one" answer, not a failure. See
+ * api/_lib/barcode/lookup.ts for the full resolution chain (saved mapping ->
+ * database providers -> AI web-search fallback).
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {

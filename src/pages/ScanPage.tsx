@@ -1,22 +1,38 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { isValidBarcode, normalizeBarcode } from "@shared/barcode";
-import { lookupBarcode, type BarcodeProduct } from "@/lib/api-client";
+import type { ScannedProduct } from "@shared/types";
+import { lookupBarcode, saveBarcodeMapping } from "@/lib/api-client";
 import { startBarcodeScanner, type RunningScanner } from "@/lib/barcode-scanner";
+import { setScannedProduct } from "@/lib/scanned-product";
 
 /**
- * Phase 5, key-free: scan (or type) a product barcode, look it up in the
- * free Open*Facts databases, and hand the product name to the /find flow.
- * Those databases are crowdsourced, so "not found" is a normal outcome
- * with a web-search fallback - never a dead end.
+ * Scan (or type) a product barcode, look it up (our own saved mappings ->
+ * free/keyed barcode databases -> an AI web-search fallback that reads real
+ * search results), let the worker confirm or correct the proposed product,
+ * then hand it to /find. The confirmed product is saved as the mapping for
+ * that barcode, so the next scan of the same item is instant.
  */
 
 type Lookup =
   | { phase: "idle" }
   | { phase: "looking-up"; code: string }
-  | { phase: "found"; code: string; product: BarcodeProduct }
+  | { phase: "confirming"; code: string; product: ScannedProduct }
   | { phase: "not-found"; code: string }
   | { phase: "error"; message: string };
+
+const SOURCE_LABELS: Record<string, string> = {
+  saved_mapping: "Previously scanned and confirmed",
+  open_facts: "Open Products/Food/Beauty Facts",
+  upc_database: "UPC Database",
+  eandata: "eandata",
+  web_search: "AI web search - please check this carefully",
+};
+
+function sourceLabel(sourceProvider: string | null): string {
+  if (!sourceProvider) return "Unknown source";
+  return SOURCE_LABELS[sourceProvider] ?? sourceProvider;
+}
 
 export default function ScanPage() {
   const navigate = useNavigate();
@@ -25,6 +41,7 @@ export default function ScanPage() {
   const [cameraState, setCameraState] = useState<"off" | "starting" | "on" | "unavailable">("off");
   const [typedCode, setTypedCode] = useState("");
   const [lookup, setLookup] = useState<Lookup>({ phase: "idle" });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     return () => scannerRef.current?.stop();
@@ -42,7 +59,7 @@ export default function ScanPage() {
     setLookup({ phase: "looking-up", code });
     try {
       const product = await lookupBarcode(code);
-      setLookup(product ? { phase: "found", code, product } : { phase: "not-found", code });
+      setLookup(product ? { phase: "confirming", code, product } : { phase: "not-found", code });
     } catch (err) {
       setLookup({
         phase: "error",
@@ -63,15 +80,30 @@ export default function ScanPage() {
     }
   }
 
-  // Prepend the brand only when it isn't already part of the name -
-  // "Glen 20" + "Glen 20 Original Scent" must not double up.
-  const searchName =
-    lookup.phase === "found"
-      ? lookup.product.brand &&
-        !lookup.product.name.toLowerCase().includes(lookup.product.brand.toLowerCase())
-        ? `${lookup.product.brand} ${lookup.product.name}`
-        : lookup.product.name
-      : "";
+  function editField(key: keyof ScannedProduct, value: string) {
+    if (lookup.phase !== "confirming") return;
+    setLookup({ ...lookup, product: { ...lookup.product, [key]: value.trim() === "" ? null : value } });
+  }
+
+  async function handleConfirm() {
+    if (lookup.phase !== "confirming" || lookup.product.name.trim() === "") return;
+    const product = lookup.product;
+
+    setSaving(true);
+    try {
+      await saveBarcodeMapping(product, null);
+    } catch (err) {
+      // Best-effort only - the worker's task is finding the SDS, not
+      // babysitting the mapping cache. A failed save just means the next
+      // scan of this barcode repeats the lookup instead of being instant.
+      console.error("saving barcode mapping failed:", err);
+    } finally {
+      setSaving(false);
+    }
+
+    setScannedProduct(product);
+    navigate(`/find?product=${encodeURIComponent(product.name)}`);
+  }
 
   return (
     <main className="min-h-screen bg-slate-50">
@@ -140,29 +172,21 @@ export default function ScanPage() {
           </div>
         )}
 
-        {lookup.phase === "found" && (
-          <section className="rounded-xl border border-green-300 bg-green-50 p-5">
-            <p className="text-sm text-green-800">Barcode {lookup.code} looks like:</p>
-            <p className="mt-1 text-xl font-semibold text-slate-800">
-              {lookup.product.name}
-              {lookup.product.brand && <span className="font-normal text-slate-600"> - {lookup.product.brand}</span>}
-            </p>
-            <button
-              type="button"
-              onClick={() => navigate(`/find?product=${encodeURIComponent(searchName)}`)}
-              className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700"
-            >
-              Find its safety sheet
-            </button>
-            <p className="mt-2 text-sm text-slate-500">Not the right product? Just type the name on the next screen.</p>
-          </section>
+        {lookup.phase === "confirming" && (
+          <ConfirmProductCard
+            code={lookup.code}
+            product={lookup.product}
+            saving={saving}
+            onChange={editField}
+            onConfirm={() => void handleConfirm()}
+          />
         )}
 
         {lookup.phase === "not-found" && (
           <section className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-slate-700">
-              The free product databases don't know barcode <strong>{lookup.code}</strong>. That happens a lot -
-              they're volunteer-built.
+              Nothing knows barcode <strong>{lookup.code}</strong> yet - not our saved list, the product databases,
+              or a web search. That happens sometimes with newer or less common products.
             </p>
             <button
               type="button"
@@ -190,5 +214,103 @@ export default function ScanPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function ConfirmProductCard({
+  code,
+  product,
+  saving,
+  onChange,
+  onConfirm,
+}: {
+  code: string;
+  product: ScannedProduct;
+  saving: boolean;
+  onChange: (key: keyof ScannedProduct, value: string) => void;
+  onConfirm: () => void;
+}) {
+  const lowConfidence = product.confidence === "low" || product.confidence === "medium";
+  return (
+    <section className="rounded-xl border border-green-300 bg-green-50 p-5">
+      <p className="text-sm text-green-800">Barcode {code} looks like:</p>
+
+      {lowConfidence && (
+        <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {product.confidence === "low" ? "Low" : "Medium"} confidence match - please check these details carefully
+          before confirming.
+        </p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-3">
+        <Field label="Product name" value={product.name} onChange={(v) => onChange("name", v)} required />
+        <Field label="Brand" value={product.brand ?? ""} onChange={(v) => onChange("brand", v)} />
+        <Field
+          label="Manufacturer's product code"
+          value={product.manufacturerProductCode ?? ""}
+          onChange={(v) => onChange("manufacturerProductCode", v)}
+        />
+        <div className="flex gap-3">
+          <Field label="Size" value={product.size ?? ""} onChange={(v) => onChange("size", v)} className="flex-1" />
+          <Field label="Variant" value={product.variant ?? ""} onChange={(v) => onChange("variant", v)} className="flex-1" />
+        </div>
+      </div>
+
+      <p className="mt-3 text-xs text-slate-500">
+        Source: {sourceLabel(product.sourceProvider)}
+        {product.sourceUrl && (
+          <>
+            {" "}
+            ·{" "}
+            <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">
+              view source
+            </a>
+          </>
+        )}
+      </p>
+
+      <button
+        type="button"
+        disabled={product.name.trim() === "" || saving}
+        onClick={onConfirm}
+        className="mt-4 w-full rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-slate-300"
+      >
+        {saving ? "Saving…" : "That's right - find its safety sheet"}
+      </button>
+      <p className="mt-2 text-sm text-slate-500">
+        Wrong or incomplete? Fix the fields above before confirming - it's saved for next time too.
+      </p>
+    </section>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  required,
+  className,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  required?: boolean;
+  className?: string;
+}) {
+  const id = `scan-${label.toLowerCase().replace(/[^a-z]+/g, "-")}`;
+  return (
+    <div className={className}>
+      <label className="block text-sm font-medium text-slate-700" htmlFor={id}>
+        {label}
+        {required && <span className="text-red-600"> *</span>}
+      </label>
+      <input
+        id={id}
+        className="mt-1 w-full rounded-lg border border-slate-300 p-2"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Not known"
+      />
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { ExtractedIndexRow } from "@shared/types";
+import type { ExtractedIndexRow, ScannedProduct } from "@shared/types";
 
 /**
  * The only place the frontend talks to /api routes. Components call these
@@ -52,21 +52,24 @@ export async function extractSDS(text: string, pageCount: number): Promise<Extra
 }
 
 /**
+ * Looks a barcode up: our own saved mapping first, then the barcode-database
+ * providers, then an AI web-search fallback. null = genuinely not known.
+ */
+export async function lookupBarcode(code: string): Promise<ScannedProduct | null> {
+  const { product } = await postJson<{ product: ScannedProduct | null }>("/api/barcode", { code });
+  return product;
+}
+
+/** Saves a worker-confirmed product as the mapping for its barcode, for instant reuse next time. */
+export async function saveBarcodeMapping(product: ScannedProduct, verifiedBy: string | null): Promise<void> {
+  await postJson<{ ok: true }>("/api/barcode-mapping", { ...product, verifiedBy });
+}
+
+/**
  * Asks /api/fetch-pdf to download an SDS PDF from a trusted site (the
  * browser can't - manufacturers' sites don't allow cross-origin reads)
  * and hands it back as a File, ready for the normal intake pipeline.
  */
-export interface BarcodeProduct {
-  name: string;
-  brand: string | null;
-}
-
-/** Looks a barcode up in the free product databases; null = not known. */
-export async function lookupBarcode(code: string): Promise<BarcodeProduct | null> {
-  const { product } = await postJson<{ product: BarcodeProduct | null }>("/api/barcode", { code });
-  return product;
-}
-
 export async function fetchSdsPdf(url: string): Promise<File> {
   const { filename, base64 } = await postJson<{ filename: string; base64: string }>("/api/fetch-pdf", { url });
   const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));

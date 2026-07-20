@@ -52,9 +52,40 @@ describe("isBlockedIp", () => {
 });
 
 describe("buildSdsSearchUrl", () => {
-  it("quotes the product name and restricts results to PDFs", () => {
-    const url = new URL(buildSdsSearchUrl("Mortein Outdoor"));
+  it("uses the manufacturer product code + brand when both are known (strongest search)", () => {
+    const url = new URL(
+      buildSdsSearchUrl({
+        name: "Line Marking Paint",
+        brand: "Dy-Mark",
+        manufacturerProductCode: "41015001",
+        variant: "Matt Black",
+      }),
+    );
     expect(url.hostname).toBe("www.google.com");
-    expect(url.searchParams.get("q")).toBe('"Mortein Outdoor" safety data sheet filetype:pdf');
+    expect(url.searchParams.get("q")).toBe('"41015001" "Dy-Mark" ("SDS" OR "Safety Data Sheet") filetype:pdf');
+  });
+
+  it("falls back to brand + name + variant when there's no product code", () => {
+    const url = new URL(
+      buildSdsSearchUrl({ name: "Line Marking Paint", brand: "Dy-Mark", variant: "Matt Black" }),
+    );
+    expect(url.searchParams.get("q")).toBe(
+      '"Dy-Mark" "Line Marking Paint" "Matt Black" ("SDS" OR "Safety Data Sheet") filetype:pdf',
+    );
+  });
+
+  it("omits variant from the fallback tier when it isn't known", () => {
+    const url = new URL(buildSdsSearchUrl({ name: "Line Marking Paint", brand: "Dy-Mark" }));
+    expect(url.searchParams.get("q")).toBe('"Dy-Mark" "Line Marking Paint" ("SDS" OR "Safety Data Sheet") filetype:pdf');
+  });
+
+  it("falls back to just the name when nothing else is known (manual entry)", () => {
+    const url = new URL(buildSdsSearchUrl({ name: "Mortein Outdoor" }));
+    expect(url.searchParams.get("q")).toBe('"Mortein Outdoor" ("SDS" OR "Safety Data Sheet") filetype:pdf');
+  });
+
+  it("strips embedded quote characters from a term", () => {
+    const url = new URL(buildSdsSearchUrl({ name: 'Weird "Quoted" Name' }));
+    expect(url.searchParams.get("q")).toBe('"Weird Quoted Name" ("SDS" OR "Safety Data Sheet") filetype:pdf');
   });
 });

@@ -87,12 +87,23 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
 2. ✅ Flow A: upload → extract (`/api/extract`) → review screen → save
 3. ✅ Register list view + CSV/XLSX export
 4. ✅ Flow B (key-free version): `/find` page — guided web search in a new
-   tab + paste-a-PDF-link fetched by `/api/fetch-pdf` from whitelisted
-   domains only. Built without a search API on purpose (none viable);
-   a search adapter can replace the copy-paste hop later.
+   tab + paste-a-PDF-link fetched by `/api/fetch-pdf`, which is SSRF-guarded
+   (any public https link works; private/internal addresses are rejected —
+   see `shared/sds-url.ts`) rather than domain-whitelisted. Built without a
+   search API on purpose (none viable); a search adapter can replace the
+   copy-paste hop later.
 5. ✅ Barcode scanning: `/scan` — camera scan (zxing, lazy-loaded) or typed
-   digits → `/api/barcode` → Open Products/Food/Beauty Facts first → optional
-   UPC Database fallback using the server-only `UPC_DATABASE_API_KEY` →
-   prefills `/find`; web-search-the-barcode fallback otherwise.
+   digits → `/api/barcode`, resolved in order: our own saved
+   `barcode_mappings` table (instant, human-confirmed) → Open Products/Food/
+   Beauty Facts (free) → UPC Database / eandata (keyed, optional, only when
+   their env vars are set) → an AI web-search fallback (`api/_lib/barcode/
+   web-search.ts`, Claude + the `web_search` tool) that reads real search
+   results and extracts structured fields (name/brand/manufacturer code/
+   size/variant), never guesses. Every hit is a `ScannedProduct` the worker
+   reviews and can correct on `/scan` before confirming; confirming saves it
+   to `barcode_mappings` (instant on every later scan of the same barcode)
+   and hands the structured fields to `/find`, which builds the SDS search
+   from the strongest identifiers available (manufacturer code + brand, else
+   brand + name + variant, else just the name) — see `shared/sds-url.ts`.
    Google Custom Search was ruled out: closed to new customers, retiring 2027.
 6. ✅ Polish, tests, docs
