@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { SDSField, SDSIndexRecord } from "@shared/types";
 import { CURRENCY_DISPLAY, EXTRACTION_STATUS_DISPLAY, fieldCellText } from "@shared/sds-fields";
-import { fetchRegister } from "@/lib/register";
+import { deleteRecord, fetchRegister } from "@/lib/register";
 import { downloadRegisterCsv, downloadRegisterXlsx } from "@/lib/export-register";
 import QuickReferenceNotice from "@/components/QuickReferenceNotice";
 
 /**
  * The register: every SDS that's been checked and saved, newest first.
- * Read-only in the app - corrections happen in Supabase. Rendered as cards,
- * not a table, so it works one-handed on a phone.
+ * Entries can be edited or deleted in place (no accounts - see the access
+ * model in CLAUDE.md). Rendered as cards, not a table, so it works one-handed
+ * on a phone.
  */
 
 type LoadState =
@@ -35,6 +36,9 @@ export default function RegisterPage() {
   }, []);
 
   const records = load.phase === "loaded" ? load.records : [];
+
+  const handleDeleted = (id: string) =>
+    setLoad((prev) => (prev.phase === "loaded" ? { ...prev, records: prev.records.filter((r) => r.id !== id) } : prev));
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -140,7 +144,7 @@ export default function RegisterPage() {
             ) : (
               <ul className="flex flex-col gap-3">
                 {visible.map((record) => (
-                  <RecordCard key={record.id} record={record} />
+                  <RecordCard key={record.id} record={record} onDeleted={handleDeleted} />
                 ))}
               </ul>
             )}
@@ -151,9 +155,25 @@ export default function RegisterPage() {
   );
 }
 
-function RecordCard({ record }: { record: SDSIndexRecord }) {
+function RecordCard({ record, onDeleted }: { record: SDSIndexRecord; onDeleted: (id: string) => void }) {
   const e = record.extracted;
   const organisation = e.manufacturer_supplier_importer.value;
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteRecord(record);
+      onDeleted(record.id);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Could not delete that entry.");
+      setDeleting(false);
+    }
+  }
+
   return (
     <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -182,6 +202,38 @@ function RecordCard({ record }: { record: SDSIndexRecord }) {
           Checked by {record.verified_by} · {record.verified_at.slice(0, 10)}
         </span>
       </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3 text-sm">
+        <Link to={`/register/edit/${record.id}`} className="font-medium text-blue-600 underline">
+          Edit
+        </Link>
+        {confirming ? (
+          <span className="flex items-center gap-2">
+            <span className="text-slate-600">Delete this entry?</span>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void handleDelete()}
+              className="rounded-lg bg-red-600 px-3 py-1 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {deleting ? "Deleting…" : "Yes, delete"}
+            </button>
+            <button type="button" disabled={deleting} onClick={() => setConfirming(false)} className="text-slate-500 underline">
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <button type="button" onClick={() => setConfirming(true)} className="font-medium text-red-600 underline">
+            Delete
+          </button>
+        )}
+      </div>
+
+      {deleteError && (
+        <div role="alert" className="mt-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-red-800">
+          {deleteError}
+        </div>
+      )}
     </li>
   );
 }

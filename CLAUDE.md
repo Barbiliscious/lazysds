@@ -70,10 +70,11 @@ supabase/migrations/           schema source of truth (applied to hosted project
 
 ## Access model (deliberate)
 
-No user accounts. Anyone with the URL can read the register and insert
-reviewed records (RLS allows anon select+insert only). `reviewed_by` is
-typed initials. Updates/deletes happen in the Supabase dashboard. Revisit
-if the register becomes sensitive.
+No user accounts. Anyone with the URL can read the register, insert reviewed
+records, and edit/delete existing ones (RLS allows anon select+insert+update
++delete; migration 0003 added update/delete and the storage-object delete).
+`reviewed_by` is typed initials. Revisit (add auth) if the register becomes
+sensitive or the URL is widely shared.
 
 ## Environment variables
 
