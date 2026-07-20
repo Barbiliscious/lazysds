@@ -8,9 +8,9 @@ import { prepareReview } from "@/lib/sds-intake";
  * Flow B: the user doesn't have the SDS PDF yet. Deliberately built
  * without any search API - the app opens an ordinary web search in a new
  * tab, the user copies the PDF's address back in, and the server fetches
- * it (from trusted sites only - shared/config/sds-domains.ts). When a
- * search API key exists one day, it can replace the copy-paste hop
- * without changing anything else on this page.
+ * it (any public https link; /api/fetch-pdf is SSRF-guarded, not domain-
+ * whitelisted - see shared/sds-url.ts). When a search API key exists one
+ * day, it can replace the copy-paste hop without changing this page.
  */
 
 type Step =

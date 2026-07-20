@@ -23,9 +23,11 @@ export to CSV/XLSX.
   fields against the document → it's saved to the register.
 - **Don't have the PDF?** `/find` → type the product name → the app opens a
   web search in a new tab → paste the PDF's link back in and the server
-  fetches it (from trusted sites only — see `shared/config/sds-domains.ts`),
-  then the same review-and-save flow runs. Built deliberately without a
-  search API; a keyed search adapter can replace the copy-paste hop later.
+  fetches it. Any public https link works; `/api/fetch-pdf` is SSRF-guarded
+  (rejects non-https and private/internal addresses, re-checking each redirect)
+  rather than domain-whitelisted — see `shared/sds-url.ts`. The same
+  review-and-save flow then runs. Built deliberately without a search API; a
+  keyed search adapter can replace the copy-paste hop later.
 - **Only have the product in hand?** `/scan` → point the camera at the
   barcode (or type the digits printed under it) → the free Open Products /
   Food / Beauty Facts databases are checked first → UPC Database is checked
@@ -53,7 +55,7 @@ the export formatting/CSV escaping and the trusted-URL checks.
 ## Where to change things
 
 - Export columns/headers: `shared/config/register-columns.ts`
-- Trusted SDS search domains: `shared/config/sds-domains.ts`
+- SDS link fetch safety (SSRF guard): `shared/sds-url.ts`
 - Extraction prompt/schema: `api/_lib/extraction/`
 - Barcode lookup order/adapters: `api/_lib/barcode/`
 

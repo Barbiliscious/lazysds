@@ -1,22 +1,37 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { promises as dns } from "node:dns";
 // Relative imports in api/ need explicit .js extensions: these run as
 // native ES modules on Vercel ("type": "module"), where Node requires them.
-import { checkSdsUrl } from "../shared/sds-url.js";
+import { checkSdsUrl, isBlockedIp } from "../shared/sds-url.js";
 
 /**
  * POST /api/fetch-pdf
- * Body: { url: string } - a link to an SDS PDF on a trusted domain.
+ * Body: { url: string } - a link to an SDS PDF anywhere on the public web.
  * Response: { filename: string, base64: string } or { error: string }.
  *
- * Exists because manufacturers' sites don't send CORS headers, so the
- * browser can't download the PDF itself. The trusted-domain whitelist
- * (shared/config/sds-domains.ts) is the safety boundary: this function
- * refuses to fetch from anywhere else.
+ * Exists because manufacturers' sites don't send CORS headers, so the browser
+ * can't download the PDF itself. Because this makes the SERVER fetch a
+ * user-supplied URL, it's SSRF-guarded rather than domain-whitelisted:
+ * checkSdsUrl (shared) rejects non-https and private-looking hosts, and here we
+ * resolve the hostname's DNS and reject if it points at any private/internal
+ * address - re-checking on every redirect hop so a public link can't bounce to
+ * an internal one.
  */
 
 // Vercel caps the whole response at ~4.5 MB and base64 adds a third, so
 // the PDF itself must stay comfortably under that.
 const MAX_PDF_BYTES = 3 * 1024 * 1024;
+const MAX_REDIRECTS = 5;
+
+/** True only when every IP the hostname resolves to is a public address. */
+async function resolvesToPublicOnly(hostname: string): Promise<boolean> {
+  try {
+    const results = await dns.lookup(hostname, { all: true });
+    return results.length > 0 && results.every((r) => !isBlockedIp(r.address));
+  } catch {
+    return false;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (req.method !== "POST") {
@@ -30,29 +45,52 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const check = checkSdsUrl(url);
-  if (!check.ok) {
-    res.status(400).json({ error: check.reason });
-    return;
+  // Follow redirects manually so each hop is re-validated (a public URL must
+  // not be able to redirect the server to a private address).
+  let currentUrl = url.trim();
+  let response: Response | null = null;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    const check = checkSdsUrl(currentUrl);
+    if (!check.ok) {
+      res.status(400).json({ error: check.reason });
+      return;
+    }
+    if (!(await resolvesToPublicOnly(check.hostname))) {
+      res.status(400).json({
+        error: `${check.hostname} couldn't be reached at a public address, so it can't be fetched. Download the PDF and upload it instead.`,
+      });
+      return;
+    }
+
+    let hopResponse: Response;
+    try {
+      hopResponse = await fetch(currentUrl, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(20_000),
+        headers: { Accept: "application/pdf,*/*" },
+      });
+    } catch {
+      res.status(502).json({ error: "That site didn't respond. Check the link, or download the PDF and upload it instead." });
+      return;
+    }
+
+    if (hopResponse.status >= 300 && hopResponse.status < 400) {
+      const location = hopResponse.headers.get("location");
+      if (!location) {
+        res.status(502).json({ error: "That link redirected without a destination. Download the PDF and upload it instead." });
+        return;
+      }
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+
+    response = hopResponse;
+    break;
   }
 
-  let response: Response;
-  try {
-    response = await fetch(url.trim(), {
-      redirect: "follow",
-      signal: AbortSignal.timeout(20_000),
-      headers: { Accept: "application/pdf,*/*" },
-    });
-  } catch {
-    res.status(502).json({ error: "That site didn't respond. Check the link, or download the PDF and upload it instead." });
-    return;
-  }
-
-  // The site may have redirected - the place we actually landed must be
-  // trusted too, or the whitelist would be trivial to bypass.
-  const landed = checkSdsUrl(response.url);
-  if (!landed.ok) {
-    res.status(400).json({ error: "That link redirected to a site that isn't on the trusted list. Download the PDF and upload it instead." });
+  if (!response) {
+    res.status(502).json({ error: "That link redirected too many times. Download the PDF and upload it instead." });
     return;
   }
 
@@ -75,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     return;
   }
 
-  const lastSegment = new URL(response.url).pathname.split("/").pop() ?? "";
+  const lastSegment = new URL(currentUrl).pathname.split("/").pop() ?? "";
   const filename = lastSegment.toLowerCase().endsWith(".pdf") ? lastSegment : "safety-data-sheet.pdf";
 
   res.status(200).json({ filename, base64: Buffer.from(bytes).toString("base64") });

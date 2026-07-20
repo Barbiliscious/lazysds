@@ -44,7 +44,6 @@ npm test           # vitest, single run
 ```
 shared/    types + config imported by BOTH src/ and api/
   config/register-columns.ts   ⚠ user-editable: export column mapping
-  config/sds-domains.ts        ⚠ user-editable: trusted SDS domain whitelist
 api/       Vercel functions; api/_lib/ holds server-only adapters (not routed)
 src/       React app: pages/, components/, lib/
 supabase/migrations/           schema source of truth (applied to hosted project)
