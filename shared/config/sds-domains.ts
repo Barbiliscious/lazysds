@@ -25,4 +25,5 @@ export const TRUSTED_SDS_DOMAINS: string[] = [
   "selleys.com.au",
   "dulux.com.au",
   "wd40.com.au",
+  "dymark.com.au", // Dymark - aerosol / line-marking paints
 ];
