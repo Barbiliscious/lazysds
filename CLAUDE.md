@@ -1,9 +1,11 @@
 # LazySDS
 
-Helps a non-expert worker find the Safety Data Sheet (SDS) for a product
-they're holding and turn it into structured rows in a compliance register.
-Audience: someone on their phone in a store cupboard who has never heard the
-acronym "SDS" — plain language and big tap targets everywhere.
+Helps a non-expert worker turn the Safety Data Sheet (SDS) PDF for a product
+they're holding into structured rows in a compliance register. Audience:
+someone on their phone in a store cupboard who has never heard the acronym
+"SDS" — plain language and big tap targets everywhere. Upload-only: the app
+does not search for or locate an SDS on the worker's behalf (no guided web
+search, no barcode lookup) — they supply the PDF, the app reads it.
 
 ## Stack
 
@@ -84,26 +86,14 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
 ## Build phases (stop after each for user review)
 
 1. ✅ Scaffold + CLAUDE.md + Supabase schema + hello-world deploy
-2. ✅ Flow A: upload → extract (`/api/extract`) → review screen → save
-3. ✅ Register list view + CSV/XLSX export
-4. ✅ Flow B (key-free version): `/find` page — guided web search in a new
-   tab + paste-a-PDF-link fetched by `/api/fetch-pdf`, which is SSRF-guarded
-   (any public https link works; private/internal addresses are rejected —
-   see `shared/sds-url.ts`) rather than domain-whitelisted. Built without a
-   search API on purpose (none viable); a search adapter can replace the
-   copy-paste hop later.
-5. ✅ Barcode scanning: `/scan` — camera scan (zxing, lazy-loaded) or typed
-   digits → `/api/barcode`, resolved in order: our own saved
-   `barcode_mappings` table (instant, human-confirmed) → Open Products/Food/
-   Beauty Facts (free) → UPC Database / eandata (keyed, optional, only when
-   their env vars are set) → an AI web-search fallback (`api/_lib/barcode/
-   web-search.ts`, Claude + the `web_search` tool) that reads real search
-   results and extracts structured fields (name/brand/manufacturer code/
-   size/variant), never guesses. Every hit is a `ScannedProduct` the worker
-   reviews and can correct on `/scan` before confirming; confirming saves it
-   to `barcode_mappings` (instant on every later scan of the same barcode)
-   and hands the structured fields to `/find`, which builds the SDS search
-   from the strongest identifiers available (manufacturer code + brand, else
-   brand + name + variant, else just the name) — see `shared/sds-url.ts`.
-   Google Custom Search was ruled out: closed to new customers, retiring 2027.
-6. ✅ Polish, tests, docs
+2. ✅ Upload → extract (`/api/extract`) → review screen → save
+3. ✅ Register list view + CSV/XLSX export, with edit/delete in place
+4. ❌ Removed: a guided-web-search-and-paste-link page (`/find`) and a
+   barcode-scan-to-product-lookup page (`/scan`), plus all backing code
+   (`api/fetch-pdf.ts`, `api/barcode.ts`, `api/barcode-mapping.ts`,
+   `api/_lib/barcode/`, `shared/sds-url.ts`, `shared/barcode.ts`) were built
+   and later removed at the user's request — the app should not search for
+   or locate an SDS on the worker's behalf, only read one they supply. The
+   now-unused `barcode_mappings` table (migration 0004) is left in place,
+   retired, per the same convention as `sds_records`.
+5. ✅ Polish, tests, docs

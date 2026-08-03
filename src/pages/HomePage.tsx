@@ -130,18 +130,6 @@ export default function HomePage() {
           {step.message}
         </div>
       )}
-
-      <p className="text-sm text-slate-500 max-w-md text-center">
-        Don't have the PDF?{" "}
-        <Link to="/find" className="text-blue-600 underline">
-          We'll help you find it
-        </Link>{" "}
-        - or{" "}
-        <Link to="/scan" className="text-blue-600 underline">
-          scan the product's barcode
-        </Link>
-        .
-      </p>
     </main>
   );
 }

@@ -1,9 +1,10 @@
 # LazySDS
 
-Helps a non-expert worker find the Safety Data Sheet (SDS) for a product
-they're holding and turn it into structured rows in a compliance register.
-Audience: someone on their phone in a store cupboard who has never heard the
-acronym "SDS" — plain language and big tap targets everywhere.
+Helps a non-expert worker turn the Safety Data Sheet (SDS) PDF for a product
+they're holding into structured rows in a compliance register. Audience:
+someone on their phone in a store cupboard who has never heard the acronym
+"SDS" — plain language and big tap targets everywhere. Upload-only: the app
+does not search for or locate an SDS on the worker's behalf.
 
 ## Stack
 
@@ -76,9 +77,9 @@ Local: copy to `.env.local`. Production: set in Vercel project settings.
 ## Build phases (stop after each for user review)
 
 1. ✅ Scaffold + AGENTS.md + Supabase schema + hello-world deploy
-2. ✅ Flow A: upload → extract (`/api/extract`) → review screen → save
-3. ✅ Register list view + 20-column CSV/XLSX export
-4. ✅ Flow B: guided web search + trusted PDF-link fetch
-5. ✅ Barcode scanning: Open Facts first, then the optional server-only
-   UPC Database fallback, then a normal web-search fallback
-6. ✅ Polish, tests and handoff documentation
+2. ✅ Upload → extract (`/api/extract`) → review screen → save
+3. ✅ Register list view + CSV/XLSX export
+4. ❌ Removed: guided web search + trusted PDF-link fetch (`/find`) and
+   barcode scanning (`/scan`) — the app does not search for or locate an
+   SDS on the worker's behalf, only read one they supply.
+5. ✅ Polish, tests and handoff documentation

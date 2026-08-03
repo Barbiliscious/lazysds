@@ -3,8 +3,6 @@ import HomePage from "./pages/HomePage";
 import ReviewPage from "./pages/ReviewPage";
 import RegisterPage from "./pages/RegisterPage";
 import EditRecordPage from "./pages/EditRecordPage";
-import FindPage from "./pages/FindPage";
-import ScanPage from "./pages/ScanPage";
 
 export default function App() {
   return (
@@ -13,8 +11,6 @@ export default function App() {
       <Route path="/review" element={<ReviewPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/register/edit/:id" element={<EditRecordPage />} />
-      <Route path="/find" element={<FindPage />} />
-      <Route path="/scan" element={<ScanPage />} />
     </Routes>
   );
 }

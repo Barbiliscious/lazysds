@@ -13,34 +13,23 @@ export to CSV/XLSX.
    needed when running the full stack.
 3. **Run:**
    - `npm run dev` — frontend only, fastest loop for UI work. `/api` routes
-     are not served, so extraction/search won't work.
+     are not served, so extraction won't work.
    - `vercel dev` — full stack (requires the [Vercel CLI](https://vercel.com/docs/cli)
      and a linked project). Serves the Vite app *and* the `api/` functions.
 
 ## How it works
 
-- **Have the PDF?** Home page → upload it → the AI reads it → you check the
-  fields against the document → it's saved to the register.
-- **Don't have the PDF?** `/find` → type the product name → the app opens a
-  web search in a new tab → paste the PDF's link back in and the server
-  fetches it. Any public https link works; `/api/fetch-pdf` is SSRF-guarded
-  (rejects non-https and private/internal addresses, re-checking each redirect)
-  rather than domain-whitelisted — see `shared/sds-url.ts`. The same
-  review-and-save flow then runs. Built deliberately without a search API; a
-  keyed search adapter can replace the copy-paste hop later.
-- **Only have the product in hand?** `/scan` → point the camera at the
-  barcode (or type the digits printed under it) → the free Open Products /
-  Food / Beauty Facts databases are checked first → UPC Database is checked
-  only when they miss → straight into the find flow. If every database
-  misses, the fallback is a web search for the barcode number.
-- **The register** (`/register`) lists everything saved and exports to
-  CSV or Excel.
+- Home page → upload the SDS PDF (one or more at once) → the AI reads each
+  one → you check the fields against the document → it's saved to the
+  register.
+- **The register** (`/register`) lists everything saved, can be edited or
+  deleted in place, and exports to CSV or Excel.
 
 ## Tests
 
 `npm test` runs the Vitest suite. Tests live next to the code they cover
-(`*.test.ts`): barcode providers and fallback order, the extraction schema,
-the export formatting/CSV escaping and the trusted-URL checks.
+(`*.test.ts`): the extraction schema, deterministic dates/currency, and the
+export formatting/CSV escaping.
 
 ## Deployment (Vercel)
 
@@ -55,9 +44,7 @@ the export formatting/CSV escaping and the trusted-URL checks.
 ## Where to change things
 
 - Export columns/headers: `shared/config/register-columns.ts`
-- SDS link fetch safety (SSRF guard): `shared/sds-url.ts`
 - Extraction prompt/schema: `api/_lib/extraction/`
-- Barcode lookup order/adapters: `api/_lib/barcode/`
 
 ## Current handoff
 
