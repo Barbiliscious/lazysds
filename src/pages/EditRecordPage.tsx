@@ -13,8 +13,21 @@ import { fetchRecordById, updateRecord } from "@/lib/register";
  */
 
 const FIELD_KEYS: SDSFieldKey[] = FIELD_SPECS.map((s) => s.key);
-const LONG_FIELDS = new Set<SDSFieldKey>(["hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media"]);
-const FIELD_ROWS: Partial<Record<SDSFieldKey, number>> = { hazard_statements: 4, ppe: 6, first_aid: 5 };
+const LONG_FIELDS = new Set<SDSFieldKey>([
+  "hazard_classification",
+  "hazard_statements",
+  "ppe",
+  "first_aid",
+  "spill",
+  "storage",
+  "fire_media",
+]);
+const FIELD_ROWS: Partial<Record<SDSFieldKey, number>> = {
+  hazard_classification: 2,
+  hazard_statements: 4,
+  ppe: 6,
+  first_aid: 5,
+};
 const DATE_FIELDS = new Set<SDSFieldKey>(["issue_date", "review_date_stated"]);
 
 type State =

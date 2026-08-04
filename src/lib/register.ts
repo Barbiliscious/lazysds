@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
 import { buildRecord } from "./build-record";
+import { normaliseExtracted } from "@shared/sds-fields";
 import type { ExtractedIndexRow, SDSIndexRecord } from "@shared/types";
 
 /**
@@ -16,7 +17,7 @@ export async function fetchRegister(): Promise<SDSIndexRecord[]> {
   if (error) {
     throw new Error(`Could not load the register: ${error.message}`);
   }
-  return (data ?? []) as SDSIndexRecord[];
+  return ((data ?? []) as SDSIndexRecord[]).map((r) => ({ ...r, extracted: normaliseExtracted(r.extracted) }));
 }
 
 export async function fetchRecordById(id: string): Promise<SDSIndexRecord | null> {
@@ -24,7 +25,8 @@ export async function fetchRecordById(id: string): Promise<SDSIndexRecord | null
   if (error) {
     throw new Error(`Could not load that entry: ${error.message}`);
   }
-  return (data as SDSIndexRecord | null) ?? null;
+  const record = data as SDSIndexRecord | null;
+  return record ? { ...record, extracted: normaliseExtracted(record.extracted) } : null;
 }
 
 /**

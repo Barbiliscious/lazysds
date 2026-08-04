@@ -1,5 +1,6 @@
 import type {
   CurrencyFlag,
+  ExtractedIndexRow,
   ExtractionStatus,
   FieldStatus,
   SDSField,
@@ -80,6 +81,26 @@ const FIELD_SPEC_BY_KEY: Record<SDSFieldKey, FieldSpec> = Object.fromEntries(
 
 export function fieldHeader(key: SDSFieldKey): string {
   return FIELD_SPEC_BY_KEY[key].header;
+}
+
+const MISSING_FIELD: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };
+
+/**
+ * Fills in any field missing from a stored record - e.g. a row saved before
+ * a new field (like Hazard Classification) existed in FIELD_SPECS. Treats a
+ * missing field as NOT_STATED rather than every screen that reads a field
+ * off a record crashing on `undefined`. Apply this wherever a record comes
+ * back from storage, before it reaches any UI or export code.
+ */
+export function normaliseExtracted(row: Partial<ExtractedIndexRow>): ExtractedIndexRow {
+  const fields = Object.fromEntries(
+    FIELD_SPECS.map((s) => [s.key, row[s.key] ?? MISSING_FIELD]),
+  ) as Record<SDSFieldKey, SDSField>;
+  return {
+    ...fields,
+    extraction_status: row.extraction_status ?? "MANUAL_REVIEW_REQUIRED",
+    review_reasons: row.review_reasons ?? [],
+  };
 }
 
 /**
