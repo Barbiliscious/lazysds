@@ -49,15 +49,19 @@ export interface PdfSections {
 }
 
 const SECTION_PREFIX_RE = /^section\s+(\d{1,2})\b/i;
-const NUMBERED_RE = /^(\d{1,2})[.)]?\s+(.+)$/;
+// Separator after the number: ". ", ") ", or a hyphen/en dash/em dash (older
+// pre-GHS SDS templates number sections as "1 - Title" / "2 – Title").
+const NUMBERED_RE = /^(\d{1,2})\s*[.):–—-]?\s*(.+)$/;
 
 /**
  * The GHS 16-section titles (first significant word). Used to recognise
  * "1. Identification" style headings without mistaking ordinary numbered
- * lines ("5 litres of water") for a section heading.
+ * lines ("5 litres of water") for a section heading. "chemical" covers the
+ * older pre-2012 title for section 1, "Chemical Product and Company
+ * Identification", still common on legacy SDS templates.
  */
 const GHS_TITLE_WORDS =
-  /^(identification|hazard|composition|first[-\s]?aid|fire[-\s]?fighting|fire|accidental|handling|exposure|physical|stability|toxicolog|ecolog|disposal|transport|regulat|other)/i;
+  /^(identification|chemical|hazard|composition|first[-\s]?aid|fire[-\s]?fighting|fire|accidental|handling|exposure|physical|stability|toxicolog|ecolog|disposal|transport|regulat|other)/i;
 
 function inRange(raw: string): number | null {
   const n = Number.parseInt(raw, 10);

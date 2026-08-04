@@ -13,6 +13,11 @@ describe("parseSectionHeading", () => {
     expect(parseSectionHeading("4 First aid measures")).toBe(4);
     expect(parseSectionHeading("5 Firefighting measures")).toBe(5);
   });
+  it("recognises 'N - Title' / 'N – Title' headings from older pre-GHS templates", () => {
+    expect(parseSectionHeading("1 - Chemical Product and Company Identification")).toBe(1);
+    expect(parseSectionHeading("2 – Hazards Identification")).toBe(2);
+    expect(parseSectionHeading("14 – Transportation Information")).toBe(14);
+  });
   it("ignores non-headings and out-of-range numbers", () => {
     expect(parseSectionHeading("1.2 Product identifier")).toBeNull();
     expect(parseSectionHeading("2.2 Label elements")).toBeNull();
