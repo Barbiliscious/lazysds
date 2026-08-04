@@ -4,7 +4,7 @@ import { buildRegisterWorkbook, cellText, registerToCsv, toRichLines } from "./e
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
-  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "hazard_classification",
   "hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media",
 ];
 
@@ -61,9 +61,9 @@ describe("cellText", () => {
 });
 
 describe("registerToCsv", () => {
-  it("has the 20 grouped columns in the header, SDS Link last", () => {
+  it("has the 21 grouped columns in the header, SDS Link last", () => {
     const header = (registerToCsv([]).split("\r\n")[0] ?? "").split(",");
-    expect(header).toHaveLength(20);
+    expect(header).toHaveLength(21);
     expect(header[0]).toBe("SDS Record ID");
     expect(header).toContain("Signal Word");
     expect(header).toContain("PPE");
@@ -96,7 +96,7 @@ describe("toRichLines", () => {
 });
 
 describe("buildRegisterWorkbook", () => {
-  it("writes and reads back the 20-column workbook layout", async () => {
+  it("writes and reads back the 21-column workbook layout", async () => {
     const workbook = await buildRegisterWorkbook([makeRecord()]);
     const buffer = await workbook.xlsx.writeBuffer();
     const { Workbook } = await import("exceljs");
@@ -105,10 +105,10 @@ describe("buildRegisterWorkbook", () => {
 
     const sheet = loaded.getWorksheet("SDS Index");
     expect(sheet).toBeDefined();
-    expect(sheet?.columnCount).toBe(20);
+    expect(sheet?.columnCount).toBe(21);
     expect(sheet?.getCell(3, 5).value).toBe("Issue Date");
-    expect(sheet?.getCell(3, 20).value).toBe("SDS Link");
-    expect(sheet?.getCell(4, 20).value).toEqual({
+    expect(sheet?.getCell(3, 21).value).toBe("SDS Link");
+    expect(sheet?.getCell(4, 21).value).toEqual({
       text: "https://example.com/sds.pdf",
       hyperlink: "https://example.com/sds.pdf",
     });

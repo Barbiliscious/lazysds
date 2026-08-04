@@ -5,7 +5,7 @@ import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "../../../shared/t
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
-  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "hazard_classification",
   "hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media",
 ];
 

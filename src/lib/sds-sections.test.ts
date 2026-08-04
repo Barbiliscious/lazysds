@@ -24,7 +24,13 @@ describe("sectionForField", () => {
   });
   it("falls back to the canonical section when there is no location", () => {
     expect(sectionForField("ppe", notStated)).toBe(CANONICAL_SECTION.ppe);
-    expect(sectionForField("dangerous_goods", notStated)).toBe(14);
+    expect(sectionForField("dangerous_goods", notStated)).toBe(2);
+  });
+  it("always uses the canonical section for dangerous_goods, ignoring any cited location", () => {
+    // Dangerous Goods is commonly stated in Section 14 (Transport), but
+    // Transport isn't shown as its own review section - the field always
+    // surfaces with the rest of the hazard-at-a-glance facts in Section 2.
+    expect(sectionForField("dangerous_goods", stated("Section 14, SDS page 6"))).toBe(2);
   });
 });
 

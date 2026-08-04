@@ -43,10 +43,10 @@ STATUSES (use exactly these tokens; they are NOT interchangeable)
 - NA_UNCLEAR - the SDS writes "N/A" without defining whether it means not applicable or not available
 
 THE DISTINCTION THAT MATTERS MOST
-Hazardous Chemical (hazardous_chemical, from Section 2 - health/physical hazard) and Dangerous Goods (dangerous_goods, from Section 14 - transport) are DIFFERENT questions with different answers. A product can be a hazardous chemical and NOT a Dangerous Good - very common with cleaning products.
-- Never set hazardous_chemical to NO because Section 14 says "not a Dangerous Good".
+Hazardous Chemical (hazardous_chemical, from Section 2 - health/physical hazard) and Dangerous Goods (dangerous_goods, the Transport/Dangerous Goods classification - commonly Section 14, sometimes repeated in Section 2) are DIFFERENT questions with different answers. A product can be a hazardous chemical and NOT a Dangerous Good - very common with cleaning products.
+- Never set hazardous_chemical to NO because the SDS says "not a Dangerous Good".
 - Never infer Dangerous Goods status from a missing UN number.
-- Answer each from its own section only.
+- Answer each from its own evidence only - don't let one question's answer decide the other.
 
 CONDITIONS STAY ATTACHED
 hazardous_chemical always describes the product AS SUPPLIED. If the SDS says it becomes non-hazardous when diluted, it is still YES - a dilution statement never changes it to NO. If a PPE or handling requirement depends on a condition (dilution, spraying, poor ventilation), keep the condition in the summary line.

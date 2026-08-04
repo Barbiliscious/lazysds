@@ -44,6 +44,7 @@ export const REGISTER_COLUMNS: RegisterColumn[] = [
   { group: "HAZARD AT A GLANCE", header: "Hazardous Chemical?", ref: { field: "hazardous_chemical" } },
   { group: "HAZARD AT A GLANCE", header: "Dangerous Goods?", ref: { field: "dangerous_goods" } },
   { group: "HAZARD AT A GLANCE", header: "Signal Word", ref: { field: "signal_word" } },
+  { group: "HAZARD AT A GLANCE", header: "Hazard Classification", ref: { field: "hazard_classification" } },
   { group: "HAZARD AT A GLANCE", header: "Hazard Statements", ref: { field: "hazard_statements" } },
   { group: "QUICK RESPONSE", header: "PPE", ref: { field: "ppe" } },
   { group: "QUICK RESPONSE", header: "First Aid - Key Points", ref: { field: "first_aid" } },

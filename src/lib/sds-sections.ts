@@ -18,8 +18,9 @@ export const CANONICAL_SECTION: Record<SDSFieldKey, number> = {
   issue_date: 1,
   review_date_stated: 1,
   hazardous_chemical: 2,
-  dangerous_goods: 14,
+  dangerous_goods: 2,
   signal_word: 2,
+  hazard_classification: 2,
   hazard_statements: 2,
   ppe: 8,
   first_aid: 4,
@@ -27,6 +28,15 @@ export const CANONICAL_SECTION: Record<SDSFieldKey, number> = {
   storage: 7,
   fire_media: 5,
 };
+
+/**
+ * Fields always shown at their canonical section, never wherever the AI
+ * happened to cite its evidence. Dangerous Goods is often stated in Section
+ * 14 (Transport Information), but Transport is boilerplate that doesn't need
+ * its own review step - the yes/no answer belongs with the rest of the
+ * hazard-at-a-glance facts in Section 2, not off in a section by itself.
+ */
+const ALWAYS_CANONICAL = new Set<SDSFieldKey>(["dangerous_goods"]);
 
 const SECTION_RE = /\bsection\s+(\d{1,2})\b/i;
 
@@ -41,5 +51,6 @@ export function firstSdsSection(location: string | null): number | null {
 
 /** The SDS section a field belongs to: its cited section, else the canonical one. */
 export function sectionForField(key: SDSFieldKey, field: SDSField): number {
+  if (ALWAYS_CANONICAL.has(key)) return CANONICAL_SECTION[key];
   return firstSdsSection(field.location) ?? CANONICAL_SECTION[key];
 }

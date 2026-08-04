@@ -45,6 +45,7 @@ export const extractedSDSSchema = z.object({
   hazardous_chemical: sdsField,
   dangerous_goods: sdsField,
   signal_word: sdsField,
+  hazard_classification: sdsField,
   hazard_statements: sdsField,
   ppe: sdsField,
   first_aid: sdsField,

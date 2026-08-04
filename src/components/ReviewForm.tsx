@@ -46,6 +46,7 @@ const FIELD_KEYS: SDSFieldKey[] = FIELD_SPECS.map((s) => s.key);
 
 // Fields whose values are typically long - render as a textarea.
 const LONG_FIELDS = new Set<SDSFieldKey>([
+  "hazard_classification",
   "hazard_statements",
   "ppe",
   "first_aid",
@@ -54,12 +55,27 @@ const LONG_FIELDS = new Set<SDSFieldKey>([
   "fire_media",
 ]);
 
-// Generous textarea heights for the structured multi-line fields.
+// Minimum textarea heights for the structured multi-line fields. The actual
+// height grows to fit the content (see computeRows) so nothing is clipped.
 const FIELD_ROWS: Partial<Record<SDSFieldKey, number>> = {
-  hazard_statements: 4,
+  hazard_classification: 2,
+  hazard_statements: 3,
   ppe: 6,
   first_aid: 5,
 };
+
+// A textarea's `rows` only reserves that many lines - longer content just
+// scrolls out of view. Estimate how many rows the current value actually
+// needs (explicit line breaks, plus wrapped lines for long ones) so the box
+// always opens tall enough to show everything without scrolling.
+const CHARS_PER_ROW = 64;
+function computeRows(value: string, min: number): number {
+  if (!value) return min;
+  const wrapped = value
+    .split("\n")
+    .reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / CHARS_PER_ROW)), 0);
+  return Math.max(min, wrapped);
+}
 
 export default function ReviewForm({ pending, position, onSaved, onCancel }: ReviewFormProps) {
   const [fields, setFields] = useState<ExtractedIndexRow>(pending.extracted);
@@ -140,8 +156,8 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
     );
   };
 
-  // Fields whose section wasn't found as a heading in the PDF - shown at the
-  // end so nothing is hidden, even when detection misses a section.
+  // Fields whose section wasn't found as a heading in the PDF - shown up
+  // front so nothing is hidden, even when detection misses a section.
   const unmatchedKeys = detectedSections === null
     ? []
     : FIELD_KEYS.filter((key) => !detectedSections.includes(sectionOf(key)));
@@ -199,19 +215,14 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
           </p>
         </div>
 
-        <PdfSectionReview
-          file={pending.file}
-          onLoaded={handleLoaded}
-          renderSectionFields={renderSectionFields}
-        />
-
         {unmatchedKeys.length > 0 && (
-          <div className="mt-10 grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <div className="mb-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
             <div className="hidden lg:block" aria-hidden />
             <section aria-label="Values not tied to a section" className="rounded-lg border border-amber-300 bg-amber-50 p-4">
               <h2 className="text-lg font-bold text-amber-900">Not tied to a section</h2>
               <p className="mb-4 text-sm text-amber-800">
-                These values weren't matched to a section heading in the PDF. Check them against the document before saving.
+                These values weren't matched to a section heading in the PDF, so they're shown here up front - check
+                them against the document before saving.
               </p>
               <div className="flex flex-col gap-4">
                 {unmatchedKeys.map((key) => <div key={key}>{renderReviewField(key)}</div>)}
@@ -219,6 +230,12 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
             </section>
           </div>
         )}
+
+        <PdfSectionReview
+          file={pending.file}
+          onLoaded={handleLoaded}
+          renderSectionFields={renderSectionFields}
+        />
 
         <div className="mt-10 grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="hidden lg:block" aria-hidden />
@@ -325,7 +342,7 @@ function FieldRow({
       {LONG_FIELDS.has(fieldKey) ? (
         <textarea
           id={id}
-          rows={FIELD_ROWS[fieldKey] ?? 2}
+          rows={computeRows(normaliseDisplayDashes(field.value ?? ""), FIELD_ROWS[fieldKey] ?? 2)}
           className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm"
           value={normaliseDisplayDashes(field.value ?? "")}
           onChange={(e) => onChange(e.target.value)}

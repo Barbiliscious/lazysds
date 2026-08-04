@@ -4,7 +4,7 @@ import { buildRecord } from "./build-record";
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
-  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word",
+  "review_date_stated", "hazardous_chemical", "dangerous_goods", "signal_word", "hazard_classification",
   "hazard_statements", "ppe", "first_aid", "spill", "storage", "fire_media",
 ];
 const notStated: SDSField = { value: null, status: "NOT_STATED", excerpt: null, location: null };

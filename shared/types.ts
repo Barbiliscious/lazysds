@@ -49,7 +49,7 @@ export type ExtractionStatus =
   | "MANUAL_REVIEW_REQUIRED"
   | "INCOMPLETE_SOURCE";
 
-/** The 14 SDS-derived fields the AI reads, each with its evidence. */
+/** The 15 SDS-derived fields the AI reads, each with its evidence. */
 export type SDSFieldKey =
   | "product_name"
   | "manufacturer_supplier_importer"
@@ -59,6 +59,7 @@ export type SDSFieldKey =
   | "hazardous_chemical"
   | "dangerous_goods"
   | "signal_word"
+  | "hazard_classification"
   | "hazard_statements"
   | "ppe"
   | "first_aid"

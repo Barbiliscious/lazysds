@@ -26,11 +26,11 @@ save an approved quick-reference register row.
 3. Check exact source quotations and section/page locations for each field.
 4. Confirm controlled pictograms and one resolved Review Date.
 5. Save only after a person verifies the record with their initials.
-6. View the register and export the exact 20-column CSV or styled Excel file.
+6. View the register and export the exact 21-column CSV or styled Excel file.
 
 ## Register rules
 
-- Excel and CSV exports contain exactly 20 columns.
+- Excel and CSV exports contain exactly 21 columns.
 - Manufacturer, Supplier and Importer share one field; the first organisation
   present in the SDS is used.
 - Pictograms use fixed GHS wording and are confirmed by the reviewer.
