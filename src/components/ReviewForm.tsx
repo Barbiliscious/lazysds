@@ -12,6 +12,7 @@ import { computeCurrencyFlag, parseSdsDate, resolveReviewDate } from "@shared/sd
 import type { PendingReview } from "@/lib/pending-review";
 import { clearPendingReview } from "@/lib/pending-review";
 import { saveReviewedRecord } from "@/lib/save-record";
+import { emailRegisterCopy } from "@/lib/email-copy";
 import { sectionForField } from "@/lib/sds-sections";
 import PdfSectionReview from "@/components/PdfSectionReview";
 import QuickReferenceNotice from "@/components/QuickReferenceNotice";
@@ -166,7 +167,13 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
     if (!canSave) return;
     setSaveState({ phase: "saving" });
     try {
-      await saveReviewedRecord(pending.file, fields, pending.source, reviewedBy.trim());
+      const saved = await saveReviewedRecord(pending.file, fields, pending.source, reviewedBy.trim());
+      // Best effort, and never awaited: the record is saved either way, and
+      // if REGISTER_NOTIFY_EMAIL/RESEND_API_KEY aren't configured this is a
+      // deliberate no-op (see api/send-copy.ts).
+      emailRegisterCopy(saved, pending.file).catch((err: unknown) => {
+        console.error("emailing a copy of the saved record failed:", err);
+      });
       clearPendingReview();
       onSaved();
     } catch (err) {

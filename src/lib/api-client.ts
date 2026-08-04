@@ -50,3 +50,19 @@ export async function extractSDS(text: string, pageCount: number): Promise<Extra
   });
   return extracted;
 }
+
+/**
+ * Emails a one-row spreadsheet copy plus the source PDF to whoever
+ * REGISTER_NOTIFY_EMAIL is set to. `skipped: true` means the feature isn't
+ * configured server-side (no RESEND_API_KEY / REGISTER_NOTIFY_EMAIL) - not
+ * an error, just off.
+ */
+export async function sendRegisterCopyEmail(payload: {
+  productName: string;
+  xlsxBase64: string;
+  xlsxFilename: string;
+  pdfBase64: string;
+  pdfFilename: string;
+}): Promise<{ ok: boolean; skipped?: boolean }> {
+  return postJson<{ ok: boolean; skipped?: boolean }>("/api/send-copy", payload);
+}

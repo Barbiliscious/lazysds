@@ -30,6 +30,11 @@ search, no barcode lookup) — they supply the PDF, the app reads it.
   live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
   ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.
 - **Region conventions:** Australia (GHS per Safe Work Australia, ADG classes)
+- **Email (optional):** `api/send-copy.ts` + `api/_lib/email.ts` email a
+  one-row spreadsheet copy plus the source PDF to `REGISTER_NOTIFY_EMAIL`
+  whenever a record is saved, via Resend's HTTP API (no SDK). Off entirely
+  when `RESEND_API_KEY` / `REGISTER_NOTIFY_EMAIL` aren't set — saving to the
+  register never depends on it.
 
 ## Commands
 
