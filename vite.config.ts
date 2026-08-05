@@ -2,6 +2,21 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
+import { execSync } from "node:child_process";
+
+// The commit actually built, shown on-screen (VersionBadge) so a worker or
+// dev can confirm which deploy they're looking at. Vercel sets its own env
+// var rather than leaving it to `git`, since a Vercel build checks out a
+// detached commit with no local git history to inspect.
+function resolveBuildVersion(): string {
+  const vercelSha = process.env.VERCEL_GIT_COMMIT_SHA;
+  if (vercelSha) return vercelSha.slice(0, 7);
+  try {
+    return execSync("git rev-parse --short HEAD").toString().trim();
+  } catch {
+    return "dev";
+  }
+}
 
 // "@shared" resolves only inside the Vite app (src/).
 // Serverless functions in api/ are bundled separately by Vercel and must
@@ -26,6 +41,9 @@ export default defineConfig(({ mode }) => {
         "@": path.resolve(__dirname, "src"),
         "@shared": path.resolve(__dirname, "shared"),
       },
+    },
+    define: {
+      __APP_VERSION__: JSON.stringify(resolveBuildVersion()),
     },
   };
 });

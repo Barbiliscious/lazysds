@@ -3,14 +3,18 @@ import HomePage from "./pages/HomePage";
 import ReviewPage from "./pages/ReviewPage";
 import RegisterPage from "./pages/RegisterPage";
 import EditRecordPage from "./pages/EditRecordPage";
+import VersionBadge from "./components/VersionBadge";
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/review" element={<ReviewPage />} />
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/register/edit/:id" element={<EditRecordPage />} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/review" element={<ReviewPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register/edit/:id" element={<EditRecordPage />} />
+      </Routes>
+      <VersionBadge />
+    </>
   );
 }
