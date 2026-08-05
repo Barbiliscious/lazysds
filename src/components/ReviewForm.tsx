@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ExtractedIndexRow, SDSField, SDSFieldKey } from "@shared/types";
+import type { ExtractedIndexRow, SDSField, SDSFieldKey, SDSIndexRecord } from "@shared/types";
 import {
   CURRENCY_DISPLAY,
   EXTRACTION_STATUS_DISPLAY,
@@ -33,7 +33,7 @@ interface ReviewFormProps {
   /** Batch position, or null for a single PDF. */
   position: { current: number; total: number } | null;
   /** Called after this record has been saved to the register. */
-  onSaved: () => void;
+  onSaved: (saved: SDSIndexRecord) => void;
   /** Called when the user abandons the review (also drops the rest of a batch). */
   onCancel: () => void;
 }
@@ -175,7 +175,7 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
         console.error("emailing a copy of the saved record failed:", err);
       });
       clearPendingReview();
-      onSaved();
+      onSaved(saved);
     } catch (err) {
       setSaveState({
         phase: "error",

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import type { SDSIndexRecord } from "@shared/types";
 import { getPendingReview, clearPendingReview } from "@/lib/pending-review";
 import { advance, clearQueue, hasNext, queuePosition } from "@/lib/review-queue";
 import { prepareReview } from "@/lib/sds-intake";
+import { downloadBatchZip, type BatchItem } from "@/lib/download-batch";
 import ReviewForm from "@/components/ReviewForm";
 
 /**
@@ -25,6 +27,9 @@ export default function ReviewPage() {
   const [itemKey, setItemKey] = useState(0);
   const [phase, setPhase] = useState<Phase>({ kind: "reviewing" });
   const [savedCount, setSavedCount] = useState(0);
+  // Every record + source PDF saved so far in this batch, for the zip download.
+  const [batchItems, setBatchItems] = useState<BatchItem[]>([]);
+  const [zipping, setZipping] = useState(false);
 
   // A refresh loses the in-memory hand-off - go back to the start.
   useEffect(() => {
@@ -32,6 +37,7 @@ export default function ReviewPage() {
   }, [pending, navigate]);
 
   if (!pending) return null;
+  const currentFile = pending.file;
 
   // Pull the next queued file and extract it, or finish the batch.
   async function loadNext(completed: number) {
@@ -55,9 +61,10 @@ export default function ReviewPage() {
     }
   }
 
-  function handleSaved() {
+  function handleSaved(saved: SDSIndexRecord) {
     const completed = savedCount + 1;
     setSavedCount(completed);
+    setBatchItems((items) => [...items, { record: saved, file: currentFile }]);
     if (hasNext()) {
       void loadNext(completed);
     } else {
@@ -79,6 +86,25 @@ export default function ReviewPage() {
         <h1 className="text-2xl font-bold text-slate-800">
           {phase.savedCount > 1 ? `${phase.savedCount} sheets added to the register` : "Added to the register"}
         </h1>
+        <button
+          type="button"
+          disabled={zipping}
+          onClick={async () => {
+            setZipping(true);
+            try {
+              await downloadBatchZip(batchItems);
+            } finally {
+              setZipping(false);
+            }
+          }}
+          className="rounded-xl border-2 border-blue-600 px-6 py-4 text-lg font-semibold text-blue-600 hover:bg-blue-50 disabled:opacity-60"
+        >
+          {zipping
+            ? "Preparing download…"
+            : phase.savedCount > 1
+              ? "Download this batch (spreadsheet + PDFs)"
+              : "Download spreadsheet + PDF"}
+        </button>
         <Link to="/" className="rounded-xl bg-blue-600 px-6 py-4 text-lg font-semibold text-white hover:bg-blue-700">
           Add another product
         </Link>

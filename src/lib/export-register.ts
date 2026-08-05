@@ -67,7 +67,7 @@ function exportFilename(extension: string): string {
   return `sds-register-${today}.${extension}`;
 }
 
-function downloadBlob(blob: Blob, filename: string): void {
+export function downloadBlob(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
