@@ -1,4 +1,5 @@
 import type { CurrencyFlag } from "./types";
+import { buildDeterministicId } from "./sds-id";
 
 /**
  * Deterministic date + currency logic for the index. Kept OUT of the AI's
@@ -102,15 +103,15 @@ export function computeCurrencyFlag(
   return reviewPassed || issueTooOld ? "POSSIBLY_OUTDATED" : "CURRENT";
 }
 
-/** Column 1. A stable-ish id: SUPPLIER-PRODUCT-ISSUEDATE, sanitised. */
+/**
+ * Column 1. A stable-ish id: SUPPLIER-PRODUCT-ISSUEDATE, sanitised. The
+ * canonicalisation itself lives in shared/sds-id.ts - shared with the
+ * exported SDS Filename so the two can never drift apart.
+ */
 export function buildRecordId(
   supplier: string | null,
   product: string | null,
   issueDate: string | null,
 ): string {
-  const part = (s: string | null, fallback: string) => {
-    const cleaned = (s ?? "").toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    return cleaned || fallback;
-  };
-  return [part(supplier, "UNKNOWN"), part(product, "UNKNOWN"), part(issueDate, "NODATE")].join("-");
+  return buildDeterministicId(supplier, product, issueDate);
 }

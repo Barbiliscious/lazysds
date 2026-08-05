@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ExtractedIndexRow, SDSField, SDSFieldKey, SDSIndexRecord } from "@shared/types";
-import { buildBatchZip, type BatchItem } from "./download-batch";
+import { BatchValidationError, buildBatchZip, type BatchItem } from "./download-batch";
 
 const FIELD_KEYS: SDSFieldKey[] = [
   "product_name", "manufacturer_supplier_importer", "product_codes", "issue_date",
@@ -41,32 +41,40 @@ async function loadZip(blob: Blob) {
   return JSZip.loadAsync(await blob.arrayBuffer());
 }
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe("buildBatchZip", () => {
-  it("zips one spreadsheet covering every record plus each record's source PDF", async () => {
+  it("zips one spreadsheet at the root plus every PDF under pdfs/", async () => {
     const items = [makeItem("ACME-BLEACH-2026-01-01", "bleach.pdf"), makeItem("ACME-DEGREASER-2026-01-02", "degreaser.pdf")];
     const zip = await loadZip(await buildBatchZip(items));
 
     expect(Object.keys(zip.files).sort()).toEqual([
-      "ACME-BLEACH-2026-01-01.pdf",
-      "ACME-DEGREASER-2026-01-02.pdf",
+      "pdfs/",
+      "pdfs/ACME-BLEACH-2026-01-01.pdf",
+      "pdfs/ACME-DEGREASER-2026-01-02.pdf",
       "sds-register.xlsx",
     ]);
   });
 
   it("works for a single item (a batch of one)", async () => {
     const zip = await loadZip(await buildBatchZip([makeItem("ACME-BLEACH-2026-01-01", "bleach.pdf")]));
-    expect(Object.keys(zip.files).sort()).toEqual(["ACME-BLEACH-2026-01-01.pdf", "sds-register.xlsx"]);
+    expect(Object.keys(zip.files).sort()).toEqual(["pdfs/", "pdfs/ACME-BLEACH-2026-01-01.pdf", "sds-register.xlsx"]);
   });
 
-  it("disambiguates two records that share a record_id", async () => {
+  it("disambiguates two records that share a record_id with a numeric suffix, and warns", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const items = [makeItem("ACME-BLEACH-2026-01-01", "a.pdf"), makeItem("ACME-BLEACH-2026-01-01", "b.pdf")];
     const zip = await loadZip(await buildBatchZip(items));
-    const names = Object.keys(zip.files);
-    expect(names).toHaveLength(3);
-    expect(names.filter((n) => n.startsWith("ACME-BLEACH-2026-01-01"))).toHaveLength(2);
+    const names = Object.keys(zip.files).filter((n) => n.endsWith(".pdf"));
+
+    expect(names.sort()).toEqual(["pdfs/ACME-BLEACH-2026-01-01-2.pdf", "pdfs/ACME-BLEACH-2026-01-01.pdf"]);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain("renamed the second");
   });
 
-  it("the spreadsheet has one row per record", async () => {
+  it("the spreadsheet's Paste sheet has one header row then one row per record", async () => {
     const items = [makeItem("ACME-BLEACH-2026-01-01", "a.pdf"), makeItem("ACME-DEGREASER-2026-01-02", "b.pdf")];
     const zip = await loadZip(await buildBatchZip(items));
     const xlsxBuffer = await zip.file("sds-register.xlsx")!.async("arraybuffer");
@@ -74,8 +82,38 @@ describe("buildBatchZip", () => {
     const { Workbook } = await import("exceljs");
     const workbook = new Workbook();
     await workbook.xlsx.load(xlsxBuffer);
-    const sheet = workbook.getWorksheet("SDS Index");
-    expect(sheet?.getCell(4, 1).value).toBe("ACME-BLEACH-2026-01-01");
-    expect(sheet?.getCell(5, 1).value).toBe("ACME-DEGREASER-2026-01-02");
+    const sheet = workbook.getWorksheet("Paste");
+    expect(sheet?.getCell(1, 1).value).toBe("SDS Record ID");
+    expect(sheet?.getCell(2, 1).value).toBe("ACME-BLEACH-2026-01-01");
+    expect(sheet?.getCell(3, 1).value).toBe("ACME-DEGREASER-2026-01-02");
+  });
+
+  it("fails loudly and lists every problem when a row has an empty SDS Record ID", async () => {
+    const items = [makeItem("", "a.pdf"), makeItem("ACME-DEGREASER-2026-01-02", "b.pdf")];
+    await expect(buildBatchZip(items)).rejects.toThrow(BatchValidationError);
+    try {
+      await buildBatchZip(items);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(BatchValidationError);
+      expect((err as BatchValidationError).problems).toEqual(["Row 1: empty SDS Record ID."]);
+    }
+  });
+
+  it("fails loudly when a filename would contain a character SharePoint rejects", async () => {
+    const items = [makeItem("BAD/NAME?ID", "a.pdf")];
+    await expect(buildBatchZip(items)).rejects.toThrow(BatchValidationError);
+  });
+
+  it("fails loudly when a row has no matching PDF", async () => {
+    const items = [{ record: makeRecord("ACME-BLEACH-2026-01-01"), file: undefined } as unknown as BatchItem];
+    await expect(buildBatchZip(items)).rejects.toThrow(/no matching PDF/);
+  });
+
+  it("logs a run summary with rows exported and PDFs bundled", async () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const items = [makeItem("ACME-BLEACH-2026-01-01", "a.pdf"), makeItem("ACME-DEGREASER-2026-01-02", "b.pdf")];
+    await buildBatchZip(items);
+    expect(info).toHaveBeenCalledWith(expect.stringContaining("2 row(s) exported, 2 PDF(s) bundled"));
   });
 });

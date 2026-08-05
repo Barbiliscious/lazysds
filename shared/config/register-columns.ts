@@ -2,19 +2,20 @@ import type { SDSFieldKey } from "../types";
 
 /**
  * ═══════════════════════════════════════════════════════════════════
- *  EDIT ME - register export layout (the "SDS Index" spreadsheet)
+ *  EDIT ME - register export layout (the "Paste" sheet's columns)
  * ═══════════════════════════════════════════════════════════════════
- * A condensed, grouped view of the index - matches the Grampians example
- * workbook. This one file controls the CSV/XLSX columns, their order, their
- * group bands, and their headings.
- *  - `group` is the coloured band above the column (blank = no band).
+ * This one file controls the exported columns, their order, and their
+ * headings - both for the paste-ready "Paste" sheet and the "Read Me" sheet,
+ * where `group` becomes documentation only (see src/lib/export-register.ts).
+ *  - `group` labels which SDS section a column came from (Read Me only -
+ *    the Paste sheet has no banner/group rows, blank = ungrouped).
  *  - `header` is the column heading.
  *  - `ref` is where the cell text comes from:
  *      { field: <key> }    → an extracted SDS field's value/status
- *      { record: <token> } → a value derived in code (id, dates, admin, link)
- *  - Reorder / delete entries to change the sheet. The renderer (banner,
- *    bands, bold line-labels in PPE / First Aid, hyperlink) lives in
- *    src/lib/export-register.ts.
+ *      { record: <token> } → a value derived in code (id, dates, admin,
+ *                            SDS Filename, SDS Link)
+ *  - "SDS Filename" and "SDS Link" MUST stay last - see the SharePoint
+ *    export requirements. Otherwise reorder / delete entries freely.
  */
 
 export type RecordColumn =
@@ -24,6 +25,7 @@ export type RecordColumn =
   | "review_reasons"
   | "verified_by"
   | "verified_at"
+  | "sds_filename"
   | "sds_link";
 
 export type ColumnRef = { field: SDSFieldKey } | { record: RecordColumn };
@@ -55,6 +57,7 @@ export const REGISTER_COLUMNS: RegisterColumn[] = [
   { group: "REGISTER ADMIN", header: "Review Reasons", ref: { record: "review_reasons" } },
   { group: "REGISTER ADMIN", header: "Verified By", ref: { record: "verified_by" } },
   { group: "REGISTER ADMIN", header: "Verified Date", ref: { record: "verified_at" } },
+  { group: "", header: "SDS Filename", ref: { record: "sds_filename" } },
   { group: "", header: "SDS Link", ref: { record: "sds_link" } },
 ];
 

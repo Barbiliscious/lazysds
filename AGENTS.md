@@ -25,6 +25,11 @@ does not search for or locate an SDS on the worker's behalf.
 - **Email (optional):** `api/send-copy.ts` emails a one-row spreadsheet copy
   plus the source PDF to `REGISTER_NOTIFY_EMAIL` on save, via Resend. Off
   when `RESEND_API_KEY` / `REGISTER_NOTIFY_EMAIL` aren't set.
+- **Export (SharePoint-ready):** XLSX exports have a paste-ready `Paste`
+  sheet (plain text, no formatting) plus a `Read Me` sheet for the
+  disclaimer/docs. `SDS Filename` = `<SDS Record ID>.pdf` (shared
+  `shared/sds-id.ts`, never recomputed separately). `SDS Link` = optional
+  `VITE_SHAREPOINT_LIBRARY_URL` + filename.
 
 ## Commands
 

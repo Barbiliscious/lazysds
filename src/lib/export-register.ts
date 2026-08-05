@@ -2,6 +2,7 @@ import {
   REGISTER_COLUMNS,
   QUICK_REFERENCE_BANNER,
   type ColumnRef,
+  type RegisterColumn,
 } from "@shared/config/register-columns";
 import {
   CURRENCY_DISPLAY,
@@ -9,25 +10,34 @@ import {
   fieldCellText,
   normaliseDisplayDashes,
 } from "@shared/sds-fields";
+import { sdsFilename } from "@shared/sds-id";
 import type { SDSIndexRecord } from "@shared/types";
+import { buildSharePointLink } from "./sharepoint";
 
 /**
  * Turns register records into downloadable CSV / XLSX files. The columns,
  * order, and group bands are driven by REGISTER_COLUMNS
- * (shared/config/register-columns.ts) - edit that file, not this one. The
- * XLSX matches the Grampians example workbook: a banner row, navy group
- * bands, bold line-labels inside the PPE / First Aid cells, and a
- * hyperlinked SDS Link. CSV is the same columns, flat.
+ * (shared/config/register-columns.ts) - edit that file, not this one.
+ *
+ * The XLSX has two sheets: "Paste" is machine-clean and paste-ready for a
+ * SharePoint list's grid view (one header row, sanitised plain-text cells,
+ * no formatting/merges/hyperlinks/frozen panes - any of those breaks a grid
+ * paste). "Read Me" carries the disclaimer and the column/section
+ * documentation that used to live in the Paste sheet's banner and group
+ * bands. CSV is the same columns, flat, unaffected by the paste-safety
+ * rules (a CSV cell can hold a real line break without corrupting the file).
  */
 
-/** One cell's plain text for a given column - used by CSV and as a fallback. */
+/** One cell's plain text for a given column - used by CSV and the Paste sheet. */
 export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
   if ("field" in ref) return fieldCellText(record.extracted[ref.field]);
   switch (ref.record) {
     case "record_id":
       return record.record_id;
+    case "sds_filename":
+      return sdsFilename(record.record_id);
     case "sds_link":
-      return record.pdf_url;
+      return buildSharePointLink(sdsFilename(record.record_id)) ?? "";
     case "review_date":
       return record.review_date ?? "";
     case "extraction_status":
@@ -44,6 +54,27 @@ export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
 /** Currency isn't a column in this layout; expose it for callers that want it. */
 export function currencyText(record: SDSIndexRecord): string {
   return CURRENCY_DISPLAY[record.currency_flag];
+}
+
+const MAX_CELL_LENGTH = 30000;
+const LITERAL_EMPTY_VALUES = new Set(["none", "null", "nan", "undefined"]);
+
+/**
+ * Makes a cell safe to paste into a SharePoint list's grid view. A line
+ * break inside a pasted cell ends the paste early and shifts every
+ * following row, so every line break / tab / carriage return becomes "; "
+ * instead. Also collapses repeated spaces, trims, normalises a bare
+ * yes/no to YES/NO, caps length, and guards against the literal strings
+ * "None" / "null" / "NaN" (a bug elsewhere stringifying a missing value) -
+ * those become a genuinely empty cell, same as any other empty value.
+ */
+export function sanitizePasteCell(raw: string): string {
+  let value = raw.replace(/[\r\n\t]+/g, "; ");
+  value = value.replace(/ {2,}/g, " ").trim();
+  value = value.replace(/^(; )+/, "").replace(/(; )+$/, "");
+  if (LITERAL_EMPTY_VALUES.has(value.toLowerCase())) return "";
+  if (/^(yes|no)$/i.test(value)) value = value.toUpperCase();
+  return value.length > MAX_CELL_LENGTH ? value.slice(0, MAX_CELL_LENGTH) : value;
 }
 
 // ── CSV ───────────────────────────────────────────────────────────────────
@@ -78,119 +109,84 @@ export function downloadBlob(blob: Blob, filename: string): void {
 
 export function downloadRegisterCsv(records: SDSIndexRecord[]): void {
   // The BOM makes Excel detect UTF-8 instead of mangling accented characters.
-  const blob = new Blob(["\uFEFF" + registerToCsv(records)], {
+  const BOM = String.fromCharCode(0xfeff);
+  const blob = new Blob([BOM + registerToCsv(records)], {
     type: "text/csv;charset=utf-8",
   });
   downloadBlob(blob, exportFilename("csv"));
 }
 
-// ── XLSX (styled, matches the example workbook) ─────────────────────────────
+// ── XLSX (Paste + Read Me) ──────────────────────────────────────────────────
 
 const ARIAL = { name: "Arial", size: 10 } as const;
-const NAVY = "FF1F3864";
-const WHITE = "FFFFFFFF";
-const BANNER_FILL = "FFFFF2CC";
-const BANNER_TEXT = "FF7A2B2B";
-const LINK_BLUE = "FF0563C1";
 
-// Column widths from the example workbook, in column order.
-const WIDTHS = [22, 30, 22, 13, 14, 13, 13, 14, 12, 46, 40, 46, 34, 32, 30, 20, 38, 13, 13, 26];
+/** Sheet 1: exactly a header row plus sanitised plain-text data rows - no
+ * banner, no group rows, no merges, no formatting, no frozen panes, so it
+ * pastes cleanly into a SharePoint list's grid view. */
+function buildPasteSheet(workbook: import("exceljs").Workbook, records: SDSIndexRecord[]) {
+  const paste = workbook.addWorksheet("Paste");
+  const cols = REGISTER_COLUMNS;
 
-// The multi-line structured fields whose line-labels get bolded in Excel:
-// group headers ("REQUIRED:") bold the whole line; "Label - text" bolds the label.
-const BOLD_LABEL_FIELDS = new Set(["ppe", "first_aid"]);
-
-type RichTextPart = { font: Record<string, unknown>; text: string };
-
-/** "REQUIRED:\nEyes / Face - ..." → rich text with bold labels. */
-export function toRichLines(value: string): RichTextPart[] {
-  const lines = value.split("\n");
-  return lines.flatMap((line, idx) => {
-    const nl = idx < lines.length - 1 ? "\n" : "";
-    const trimmed = line.trim();
-    const dash = line.indexOf(" - ");
-    if (trimmed !== "" && trimmed.endsWith(":") && dash === -1) {
-      return [{ font: { ...ARIAL, bold: true }, text: line + nl }];
-    }
-    if (dash > 0) {
-      return [
-        { font: { ...ARIAL, bold: true }, text: line.slice(0, dash) },
-        { font: { ...ARIAL }, text: line.slice(dash) + nl },
-      ];
-    }
-    return [{ font: { ...ARIAL }, text: line + nl }];
+  cols.forEach((c, i) => {
+    paste.getCell(1, i + 1).value = c.header;
   });
+
+  records.forEach((record, r) => {
+    const rowNum = 2 + r;
+    cols.forEach((c, i) => {
+      const text = sanitizePasteCell(cellText(record, c.ref));
+      if (text !== "") paste.getCell(rowNum, i + 1).value = text;
+    });
+  });
+
+  return paste;
 }
 
-type WorksheetLike = Awaited<ReturnType<typeof buildWorkbook>>["ws"];
+/** Sheet 2: the disclaimer and column documentation moved out of the Paste
+ * sheet's old banner/group-band rows - for humans, not for pasting. */
+function buildReadMeSheet(workbook: import("exceljs").Workbook, cols: RegisterColumn[]) {
+  const readMe = workbook.addWorksheet("Read Me");
+  readMe.getColumn(1).width = 34;
+  readMe.getColumn(2).width = 30;
+
+  const title = readMe.getCell(1, 1);
+  title.value = "LazySDS Register Export";
+  title.font = { ...ARIAL, bold: true, size: 14 };
+
+  const disclaimer = readMe.getCell(3, 1);
+  disclaimer.value = QUICK_REFERENCE_BANNER;
+  disclaimer.alignment = { wrapText: true, vertical: "top" };
+  readMe.mergeCells(3, 1, 3, 2);
+  readMe.getRow(3).height = 45;
+
+  const note = readMe.getCell(5, 1);
+  note.value =
+    "The Paste sheet is machine-clean for pasting straight into a SharePoint list's grid view: one header row, "
+    + "plain text only, no formatting. The columns below are grouped by SDS section for reference.";
+  note.alignment = { wrapText: true, vertical: "top" };
+  readMe.mergeCells(5, 1, 5, 2);
+  readMe.getRow(5).height = 30;
+
+  const headerRow = 7;
+  readMe.getCell(headerRow, 1).value = "Column";
+  readMe.getCell(headerRow, 2).value = "SDS Section";
+  readMe.getRow(headerRow).font = { ...ARIAL, bold: true };
+
+  cols.forEach((c, i) => {
+    const rowNum = headerRow + 1 + i;
+    readMe.getCell(rowNum, 1).value = c.header;
+    readMe.getCell(rowNum, 2).value = c.group || "-";
+  });
+
+  return readMe;
+}
 
 async function buildWorkbook(records: SDSIndexRecord[]) {
   const { Workbook } = await import("exceljs");
   const workbook = new Workbook();
-  const ws = workbook.addWorksheet("SDS Index");
-  const cols = REGISTER_COLUMNS;
-  const n = cols.length;
-
-  cols.forEach((_, i) => (ws.getColumn(i + 1).width = WIDTHS[i] ?? 20));
-
-  // Row 1 - the mandatory notice, merged across every column.
-  ws.mergeCells(1, 1, 1, n);
-  const banner = ws.getCell(1, 1);
-  banner.value = QUICK_REFERENCE_BANNER;
-  banner.font = { ...ARIAL, bold: true, color: { argb: BANNER_TEXT } };
-  banner.fill = { type: "pattern", pattern: "solid", fgColor: { argb: BANNER_FILL } };
-  banner.alignment = { wrapText: true, vertical: "middle" };
-  ws.getRow(1).height = 42;
-
-  // Row 2 - group bands (merge each run of the same non-empty group label).
-  for (let i = 0; i < n; ) {
-    const group = cols[i]!.group;
-    let j = i;
-    while (j + 1 < n && cols[j + 1]!.group === group && group !== "") j++;
-    if (group !== "") {
-      if (j > i) ws.mergeCells(2, i + 1, 2, j + 1);
-      const cell = ws.getCell(2, i + 1);
-      cell.value = group;
-      cell.font = { ...ARIAL, bold: true, color: { argb: WHITE } };
-      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
-      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-    }
-    i = j + 1;
-  }
-
-  // Row 3 - column headers.
-  cols.forEach((c, i) => {
-    const cell = ws.getCell(3, i + 1);
-    cell.value = c.header;
-    cell.font = { ...ARIAL, bold: true, color: { argb: WHITE } };
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: NAVY } };
-    cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
-  });
-
-  // Data rows.
-  records.forEach((record, r) => {
-    const rowNum = 4 + r;
-    cols.forEach((c, i) => {
-      const cell = ws.getCell(rowNum, i + 1);
-      cell.font = { ...ARIAL };
-      cell.alignment = { wrapText: true, vertical: "top" };
-
-      const text = cellText(record, c.ref);
-      if ("record" in c.ref && c.ref.record === "sds_link") {
-        cell.value = { text: record.pdf_url, hyperlink: record.pdf_url };
-        cell.font = { ...ARIAL, underline: true, color: { argb: LINK_BLUE } };
-      } else if ("field" in c.ref && BOLD_LABEL_FIELDS.has(c.ref.field) && text.includes("\n")) {
-        cell.value = { richText: toRichLines(text) };
-      } else {
-        cell.value = text;
-      }
-    });
-  });
-
-  // Freeze the first two columns and the three header rows.
-  ws.views = [{ state: "frozen", xSplit: 2, ySplit: 3 }];
-
-  return { workbook, ws };
+  const paste = buildPasteSheet(workbook, records);
+  buildReadMeSheet(workbook, REGISTER_COLUMNS);
+  return { workbook, paste };
 }
 
 export async function downloadRegisterXlsx(records: SDSIndexRecord[]): Promise<void> {
@@ -206,5 +202,3 @@ export async function downloadRegisterXlsx(records: SDSIndexRecord[]): Promise<v
 export async function buildRegisterWorkbook(records: SDSIndexRecord[]) {
   return (await buildWorkbook(records)).workbook;
 }
-
-export type { WorksheetLike };
