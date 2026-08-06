@@ -21,7 +21,8 @@ function makeRecord(overrides: Partial<Record<SDSFieldKey, SDSField>> = {}, extr
   };
   return {
     id: "00000000-0000-0000-0000-000000000001",
-    record_id: "RECKITT-MORTEIN-2024-03-12",
+    record_id: "SDS-042",
+    filename_stem: "Mortein-Outdoor",
     pdf_url: "https://example.com/sds.pdf",
     extracted,
     review_date: "2029-03-12",
@@ -31,6 +32,8 @@ function makeRecord(overrides: Partial<Record<SDSFieldKey, SDSField>> = {}, extr
     verified_by: "AM",
     verified_at: "2026-07-14T02:30:00.000Z",
     created_at: "2026-07-14T02:30:00.000Z",
+    is_superseded: false,
+    supersedes_id: null,
     ...extra,
   };
 }
@@ -58,13 +61,13 @@ describe("cellText", () => {
 
   it("renders record-derived columns", () => {
     const r = makeRecord();
-    expect(cellText(r, { record: "record_id" })).toBe("RECKITT-MORTEIN-2024-03-12");
+    expect(cellText(r, { record: "record_id" })).toBe("SDS-042");
     expect(cellText(r, { record: "verified_at" })).toBe("2026-07-14");
   });
 
-  it("derives SDS Filename from the record id, not the raw fields", () => {
+  it("derives SDS Filename from the filename stem plus the number in record_id", () => {
     const r = makeRecord();
-    expect(cellText(r, { record: "sds_filename" })).toBe("RECKITT-MORTEIN-2024-03-12.pdf");
+    expect(cellText(r, { record: "sds_filename" })).toBe("Mortein-Outdoor-042");
   });
 
   it("SDS Link is empty when no SharePoint base URL is configured", () => {
@@ -73,11 +76,11 @@ describe("cellText", () => {
     expect(cellText(r, { record: "sds_link" })).toBe("");
   });
 
-  it("SDS Link joins the configured base URL with the SDS Filename", () => {
+  it("SDS Link joins the configured base URL with the SDS Filename plus .pdf", () => {
     vi.stubEnv("VITE_SHAREPOINT_LIBRARY_URL", "https://tenant.sharepoint.com/sites/Site/Shared Documents/SDS/");
     const r = makeRecord();
     expect(cellText(r, { record: "sds_link" })).toBe(
-      "https://tenant.sharepoint.com/sites/Site/Shared Documents/SDS/RECKITT-MORTEIN-2024-03-12.pdf",
+      "https://tenant.sharepoint.com/sites/Site/Shared Documents/SDS/Mortein-Outdoor-042.pdf",
     );
   });
 });
@@ -119,13 +122,14 @@ describe("sanitizePasteCell", () => {
 });
 
 describe("registerToCsv", () => {
-  it("has the 22 columns in the header, SDS Filename then SDS Link last", () => {
+  it("has the 20 columns in the header, SDS Filename then SDS Link last, no Extraction Status/Review Reasons", () => {
     const header = (registerToCsv([]).split("\r\n")[0] ?? "").split(",");
-    expect(header).toHaveLength(22);
+    expect(header).toHaveLength(20);
     expect(header[0]).toBe("SDS Record ID");
     expect(header).toContain("Signal Word");
     expect(header).toContain("PPE");
-    expect(header).not.toContain("Pictograms");
+    expect(header).not.toContain("Extraction Status");
+    expect(header).not.toContain("Review Reasons");
     expect(header[header.length - 2]).toBe("SDS Filename");
     expect(header[header.length - 1]).toBe("SDS Link");
   });
@@ -154,16 +158,16 @@ describe("buildRegisterWorkbook", () => {
 
     const sheet = loaded.getWorksheet("Paste");
     expect(sheet).toBeDefined();
-    expect(sheet?.columnCount).toBe(22);
+    expect(sheet?.columnCount).toBe(20);
 
     // Row 1 is the header - nothing else above the data.
     expect(sheet?.getCell(1, 1).value).toBe("SDS Record ID");
-    expect(sheet?.getCell(1, 21).value).toBe("SDS Filename");
-    expect(sheet?.getCell(1, 22).value).toBe("SDS Link");
+    expect(sheet?.getCell(1, 19).value).toBe("SDS Filename");
+    expect(sheet?.getCell(1, 20).value).toBe("SDS Link");
 
     // Row 2 is the first (only) data row.
-    expect(sheet?.getCell(2, 1).value).toBe("RECKITT-MORTEIN-2024-03-12");
-    expect(sheet?.getCell(2, 21).value).toBe("RECKITT-MORTEIN-2024-03-12.pdf");
+    expect(sheet?.getCell(2, 1).value).toBe("SDS-042");
+    expect(sheet?.getCell(2, 19).value).toBe("Mortein-Outdoor-042");
 
     // The multi-line PPE value is flattened to a single "; "-joined line -
     // a real line break would end a SharePoint grid paste early.
@@ -174,10 +178,10 @@ describe("buildRegisterWorkbook", () => {
     // values rather than hyperlink/rich-text objects.
     expect(sheet?.model.merges).toEqual([]);
     expect(sheet?.views ?? []).toEqual([]);
-    expect(sheet?.getCell(2, 22).value).toBe(
-      "https://tenant.sharepoint.com/sites/Site/SDS/RECKITT-MORTEIN-2024-03-12.pdf",
+    expect(sheet?.getCell(2, 20).value).toBe(
+      "https://tenant.sharepoint.com/sites/Site/SDS/Mortein-Outdoor-042.pdf",
     );
-    expect(typeof sheet?.getCell(2, 22).value).toBe("string");
+    expect(typeof sheet?.getCell(2, 20).value).toBe("string");
   });
 
   it("writes a genuinely empty cell for a not-stated field, not the word NOT STATED as a formatting artifact", async () => {

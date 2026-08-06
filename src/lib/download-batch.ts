@@ -36,11 +36,15 @@ function validateBatch(items: BatchItem[]): string[] {
       problems.push(`Row ${i + 1}: empty SDS Record ID.`);
       return;
     }
+    if (!record.filename_stem.trim()) {
+      problems.push(`${record.record_id}: empty SDS Filename.`);
+      return;
+    }
     if (!file) {
       problems.push(`${record.record_id}: no matching PDF in the batch.`);
       return;
     }
-    const name = sdsFilename(record.record_id);
+    const name = `${sdsFilename(record.filename_stem, record.record_id)}.pdf`;
     if (FORBIDDEN_FILENAME_CHARS.test(name)) {
       problems.push(`${name}: contains a character SharePoint rejects.`);
     }
@@ -59,7 +63,7 @@ function resolveFilenames(items: BatchItem[]): { resolved: ResolvedFilename[]; w
   const warnings: string[] = [];
   const seenCounts = new Map<string, number>();
   const resolved = items.map((item) => {
-    const base = sdsFilename(item.record.record_id);
+    const base = `${sdsFilename(item.record.filename_stem, item.record.record_id)}.pdf`;
     const seen = seenCounts.get(base) ?? 0;
     seenCounts.set(base, seen + 1);
     if (seen === 0) return { name: base, item };

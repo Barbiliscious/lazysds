@@ -1,29 +1,31 @@
 import type { ExtractedIndexRow, NewSDSIndexRecord, SDSSourceKind } from "@shared/types";
-import { buildRecordId, computeCurrencyFlag, resolveReviewDate } from "@shared/sds-dates";
+import { computeCurrencyFlag, resolveReviewDate } from "@shared/sds-dates";
 
 /**
  * Turns a confirmed extraction into the record that gets stored. The
- * date-derived columns (record id, review date, currency flag) are computed
- * here deterministically - never taken from the AI. Pure, so it's unit-tested
- * without touching Supabase.
+ * date-derived columns (review date, currency flag) are computed here
+ * deterministically - never taken from the AI. Pure, so it's unit-tested
+ * without touching Supabase. record_id isn't part of this: it's assigned
+ * server-side at insert (migration 0005) and never sent by the client.
+ * filenameStem is the human-confirmed value from the review screen, not
+ * recomputed here.
  */
 export function buildRecord(
   extracted: ExtractedIndexRow,
   pdfUrl: string,
   source: SDSSourceKind,
   verifiedBy: string,
+  filenameStem: string,
   now: Date = new Date(),
 ): NewSDSIndexRecord {
   const issue = extracted.issue_date.status === "STATED" ? extracted.issue_date.value : null;
   const statedReview =
     extracted.review_date_stated.status === "STATED" ? extracted.review_date_stated.value : null;
-  const product = extracted.product_name.value;
-  const supplier = extracted.manufacturer_supplier_importer.value;
 
   const { date: reviewDate, calculated } = resolveReviewDate(issue, statedReview);
 
   return {
-    record_id: buildRecordId(supplier, product, issue),
+    filename_stem: filenameStem,
     pdf_url: pdfUrl,
     extracted,
     review_date: reviewDate,

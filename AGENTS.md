@@ -31,11 +31,16 @@ does not search for or locate an SDS on the worker's behalf.
   needs only `RESEND_API_KEY`. Recipient + link are validated server-side
   (the link must point at this project's own storage) so the public,
   unauthenticated endpoint can't become an open spam relay.
+- **SDS Record ID (`SDS-042`):** server-assigned by a Postgres sequence +
+  trigger (migration 0005), not app code - locked against change after
+  insert, same as `filename_stem` (a human-confirmed product name
+  contraction from the review screen).
 - **Export (SharePoint-ready):** XLSX exports have a paste-ready `Paste`
   sheet (plain text, no formatting) plus a `Read Me` sheet for the
-  disclaimer/docs. `SDS Filename` = `<SDS Record ID>.pdf` (shared
-  `shared/sds-id.ts`, never recomputed separately). `SDS Link` = optional
-  `VITE_SHAREPOINT_LIBRARY_URL` + filename.
+  disclaimer/docs. `SDS Filename` = `filename_stem` + the number from
+  `record_id` (shared `shared/sds-id.ts`, never stored twice). `SDS Link` =
+  optional `VITE_SHAREPOINT_LIBRARY_URL` + filename + `.pdf`. Extraction
+  Status / Review Reasons are register-only, not exported.
 
 ## Commands
 

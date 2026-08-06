@@ -4,12 +4,7 @@ import {
   type ColumnRef,
   type RegisterColumn,
 } from "@shared/config/register-columns";
-import {
-  CURRENCY_DISPLAY,
-  EXTRACTION_STATUS_DISPLAY,
-  fieldCellText,
-  normaliseDisplayDashes,
-} from "@shared/sds-fields";
+import { CURRENCY_DISPLAY, fieldCellText } from "@shared/sds-fields";
 import { sdsFilename } from "@shared/sds-id";
 import type { SDSIndexRecord } from "@shared/types";
 import { buildSharePointLink } from "./sharepoint";
@@ -35,15 +30,11 @@ export function cellText(record: SDSIndexRecord, ref: ColumnRef): string {
     case "record_id":
       return record.record_id;
     case "sds_filename":
-      return sdsFilename(record.record_id);
+      return sdsFilename(record.filename_stem, record.record_id);
     case "sds_link":
-      return buildSharePointLink(sdsFilename(record.record_id)) ?? "";
+      return buildSharePointLink(`${sdsFilename(record.filename_stem, record.record_id)}.pdf`) ?? "";
     case "review_date":
       return record.review_date ?? "";
-    case "extraction_status":
-      return EXTRACTION_STATUS_DISPLAY[record.extracted.extraction_status];
-    case "review_reasons":
-      return normaliseDisplayDashes(record.extracted.review_reasons.join("; "));
     case "verified_by":
       return record.verified_by;
     case "verified_at":

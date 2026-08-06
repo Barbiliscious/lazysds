@@ -21,8 +21,6 @@ import type { SDSFieldKey } from "../types";
 export type RecordColumn =
   | "record_id"
   | "review_date"
-  | "extraction_status"
-  | "review_reasons"
   | "verified_by"
   | "verified_at"
   | "sds_filename"
@@ -48,17 +46,15 @@ export const REGISTER_COLUMNS: RegisterColumn[] = [
   { group: "HAZARD AT A GLANCE", header: "Signal Word", ref: { field: "signal_word" } },
   { group: "HAZARD AT A GLANCE", header: "Hazard Classification", ref: { field: "hazard_classification" } },
   { group: "HAZARD AT A GLANCE", header: "Hazard Statements", ref: { field: "hazard_statements" } },
-  { group: "QUICK RESPONSE", header: "PPE", ref: { field: "ppe" } },
+  { group: "HAZARD AT A GLANCE", header: "PPE", ref: { field: "ppe" } },
   { group: "QUICK RESPONSE", header: "First Aid - Key Points", ref: { field: "first_aid" } },
   { group: "QUICK RESPONSE", header: "Spill - Key Points", ref: { field: "spill" } },
   { group: "QUICK RESPONSE", header: "Storage - Key Points", ref: { field: "storage" } },
   { group: "QUICK RESPONSE", header: "Fire - Extinguishing Media", ref: { field: "fire_media" } },
-  { group: "REGISTER ADMIN", header: "Extraction Status", ref: { record: "extraction_status" } },
-  { group: "REGISTER ADMIN", header: "Review Reasons", ref: { record: "review_reasons" } },
   { group: "REGISTER ADMIN", header: "Verified By", ref: { record: "verified_by" } },
   { group: "REGISTER ADMIN", header: "Verified Date", ref: { record: "verified_at" } },
-  { group: "", header: "SDS Filename", ref: { record: "sds_filename" } },
-  { group: "", header: "SDS Link", ref: { record: "sds_link" } },
+  { group: "REGISTER ADMIN", header: "SDS Filename", ref: { record: "sds_filename" } },
+  { group: "REGISTER ADMIN", header: "SDS Link", ref: { record: "sds_link" } },
 ];
 
 /** The mandatory notice, printed as the banner row of the export. */

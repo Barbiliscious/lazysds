@@ -1,48 +1,55 @@
 /**
- * The single canonicalisation rule behind both the SDS Record ID and the
- * SDS Filename: SUPPLIER-PRODUCT-ISSUEDATE, uppercased, accents stripped,
- * every run of non-alphanumeric characters collapsed to one hyphen, capped
- * at 120 characters. Record ID and Filename must never drift apart, so the
- * filename is always derived from the already-stored record_id (see
- * `sdsFilename` below) rather than recomputed independently - this function
- * is the one place the string itself gets built.
+ * The SDS-NNN numbering scheme (see the export spec, 2026-08-06): record_id
+ * is assigned server-side by a Postgres trigger
+ * (supabase/migrations/0005_sds_number_scheme.sql) as "SDS-" plus a
+ * zero-padded ascending number - this file never generates it, and it can
+ * never change once assigned.
+ *
+ * What this file DOES generate is `filename_stem`, a short contraction of
+ * the product name (e.g. "Aquanamel") that a human confirms/edits on the
+ * review screen before first save, and the combiner that joins a record's
+ * stem to the number parsed back out of its own record_id to produce the
+ * full "SDS Filename" shown in exports (e.g. "Aquanamel-042"). The number
+ * is never stored a second time, so SDS Record ID and SDS Filename can
+ * never disagree on it.
  */
 
-const MAX_ID_LENGTH = 120;
+const MAX_STEM_LENGTH = 40;
 
 // Unicode general category "Mark, Nonspacing" - what NFD decomposition
 // splits an accented letter into (e.g. "e" + COMBINING ACUTE ACCENT).
 const COMBINING_MARKS = /\p{Mn}/gu;
 
-function canonicalisePart(value: string | null, fallback: string): string {
-  const withoutAccents = (value ?? "").normalize("NFD").replace(COMBINING_MARKS, "");
+/**
+ * A naive, deterministic starting suggestion for the SDS Filename stem:
+ * the product name cleaned to the SharePoint-safe character set (letters,
+ * numbers, hyphen only) and capped at 40 characters. Not an attempt at a
+ * "smart" contraction - it's a pre-fill a human confirms or shortens on the
+ * review screen, never written to the register unedited-but-unseen.
+ */
+export function buildFilenameStem(productName: string | null): string {
+  const withoutAccents = (productName ?? "").normalize("NFD").replace(COMBINING_MARKS, "");
   const cleaned = withoutAccents
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "-")
+    .replace(/[^A-Za-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
     .replace(/^-+|-+$/g, "");
-  return cleaned || fallback;
+  const truncated = cleaned.slice(0, MAX_STEM_LENGTH).replace(/-+$/, "");
+  return truncated || "SDS";
 }
 
-/** SUPPLIER-PRODUCT-ISSUEDATE, sanitised, uppercased, capped at 120 chars. */
-export function buildDeterministicId(
-  supplier: string | null,
-  product: string | null,
-  issueDate: string | null,
-): string {
-  const joined = [
-    canonicalisePart(supplier, "UNKNOWN"),
-    canonicalisePart(product, "UNKNOWN"),
-    canonicalisePart(issueDate, "NODATE"),
-  ].join("-");
-  return joined.slice(0, MAX_ID_LENGTH).replace(/-+$/, "");
+/** Pulls the zero-padded number out of a "SDS-042"-style record id. */
+function recordNumber(recordId: string): string {
+  const match = /^SDS-(\d+)$/.exec(recordId);
+  return match ? match[1]! : "000";
 }
 
 /**
- * The PDF filename for a saved record. Always the stored SDS Record ID plus
- * ".pdf" - never recomputed from the record's raw fields - so the two
- * columns in an export can never disagree, even for a record saved under an
- * earlier version of `buildDeterministicId`.
+ * The "SDS Filename" shown in exports: a record's filename_stem plus the
+ * number from its own record_id - no ".pdf" extension. Callers append that
+ * when naming the actual PDF file or building the SharePoint link (see
+ * cellText's sds_filename/sds_link cases in export-register.ts and the zip
+ * naming in download-batch.ts) - never regenerated independently.
  */
-export function sdsFilename(recordId: string): string {
-  return `${recordId}.pdf`;
+export function sdsFilename(filenameStem: string, recordId: string): string {
+  return `${filenameStem}-${recordNumber(recordId)}`;
 }

@@ -82,8 +82,13 @@ export type CurrencyFlag = "CURRENT" | "POSSIBLY_OUTDATED" | "DATE_UNCONFIRMED";
 /** A confirmed row in the register. */
 export interface SDSIndexRecord {
   id: string;
-  /** Column 1 - SUPPLIER-PRODUCT-ISSUEDATE, built in code. */
+  /** Column 1 - "SDS-042". Server-assigned at insert (see migration 0005);
+   * never sent by the client and never changes after that. */
   record_id: string;
+  /** A short contraction of the product name (no number, no ".pdf") -
+   * combined with record_id's number to build the exported SDS Filename.
+   * Confirmed/edited by a human before first save, then locked. */
+  filename_stem: string;
   /** Column 6 - the link to the stored PDF. Every row must have one. */
   pdf_url: string;
   extracted: ExtractedIndexRow;
@@ -99,7 +104,20 @@ export interface SDSIndexRecord {
   /** Column 32 - set to now() at save time. */
   verified_at: string;
   created_at: string;
+  /** True once a newer-issue SDS has replaced this row (see supersedes_id
+   * on the newer record). No UI reads/writes this yet - schema only. */
+  is_superseded: boolean;
+  /** Points at the record this one replaces, when it's a re-issue of an
+   * existing SDS. No UI sets this yet - schema only. */
+  supersedes_id: string | null;
 }
 
-/** What the human supplies when confirming a record on the approval screen. */
-export type NewSDSIndexRecord = Omit<SDSIndexRecord, "id" | "created_at">;
+/**
+ * What the human supplies when confirming a record on the approval screen.
+ * record_id is server-assigned (never sent); is_superseded/supersedes_id
+ * have no UI yet and default/stay null server-side.
+ */
+export type NewSDSIndexRecord = Omit<
+  SDSIndexRecord,
+  "id" | "created_at" | "record_id" | "is_superseded" | "supersedes_id"
+>;

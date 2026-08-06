@@ -9,6 +9,7 @@ import {
   normaliseDisplayDashes,
 } from "@shared/sds-fields";
 import { computeCurrencyFlag, parseSdsDate, resolveReviewDate } from "@shared/sds-dates";
+import { buildFilenameStem } from "@shared/sds-id";
 import type { PendingReview } from "@/lib/pending-review";
 import { clearPendingReview } from "@/lib/pending-review";
 import { saveReviewedRecord } from "@/lib/save-record";
@@ -78,9 +79,22 @@ function computeRows(value: string, min: number): number {
   return Math.max(min, wrapped);
 }
 
+// Keeps the SDS Filename field within SharePoint's permitted character set
+// as the user types (letters, numbers, hyphen only), without the more
+// aggressive collapsing/trimming buildFilenameStem does - that runs once at
+// save time so a trailing "-" the user is still typing through doesn't get
+// stripped out from under them on every keystroke.
+function sanitizeStemInput(raw: string): string {
+  return raw.replace(/[^A-Za-z0-9-]/g, "-").slice(0, 40);
+}
+
 export default function ReviewForm({ pending, position, onSaved, onCancel }: ReviewFormProps) {
   const [fields, setFields] = useState<ExtractedIndexRow>(pending.extracted);
   const [reviewedBy, setReviewedBy] = useState("");
+  // Pre-filled from the AI's product name, then freely editable - it isn't
+  // recomputed if product_name is edited later, so a manual edit here is
+  // never silently overwritten. Locked once saved (see migration 0005).
+  const [filenameStem, setFilenameStem] = useState(() => buildFilenameStem(pending.extracted.product_name.value));
   const [saveState, setSaveState] = useState<SaveState>({ phase: "editing" });
   // Section numbers found in the PDF; null until it has been split.
   const [detectedSections, setDetectedSections] = useState<number[] | null>(null);
@@ -106,6 +120,7 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
   const reviewDateValid = fields.review_date_stated.status !== "STATED"
     || parseSdsDate(fields.review_date_stated.value) !== null;
   const canSave = reviewedBy.trim().length > 0
+    && filenameStem.trim().length > 0
     && !incomplete
     && issueDateValid
     && reviewDateValid
@@ -167,7 +182,13 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
     if (!canSave) return;
     setSaveState({ phase: "saving" });
     try {
-      const saved = await saveReviewedRecord(pending.file, fields, pending.source, reviewedBy.trim());
+      const saved = await saveReviewedRecord(
+        pending.file,
+        fields,
+        pending.source,
+        reviewedBy.trim(),
+        buildFilenameStem(filenameStem),
+      );
       // Best effort, and never awaited: the record is saved either way, and
       // if REGISTER_NOTIFY_EMAIL/RESEND_API_KEY aren't configured this is a
       // deliberate no-op (see api/send-copy.ts).
@@ -257,6 +278,21 @@ export default function ReviewForm({ pending, position, onSaved, onCancel }: Rev
               value={reviewedBy}
               onChange={(e) => setReviewedBy(e.target.value)}
               placeholder="e.g. AM"
+            />
+
+            <label className="mt-4 block font-medium text-slate-700" htmlFor="filename-stem">
+              SDS Filename <span className="text-red-600">*</span>
+            </label>
+            <p className="text-sm text-slate-500">
+              A short name for the PDF and its SharePoint link, e.g. &ldquo;Aquanamel&rdquo;. The record number is
+              added automatically when you save - letters, numbers and hyphens only.
+            </p>
+            <input
+              id="filename-stem"
+              className="mt-2 w-full rounded-lg border border-slate-300 p-3 text-lg"
+              value={filenameStem}
+              onChange={(e) => setFilenameStem(sanitizeStemInput(e.target.value))}
+              placeholder="e.g. Aquanamel"
             />
 
             {saveState.phase === "error" && (

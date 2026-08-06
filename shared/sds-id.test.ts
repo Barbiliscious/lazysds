@@ -1,41 +1,42 @@
 import { describe, expect, it } from "vitest";
-import { buildDeterministicId, sdsFilename } from "./sds-id";
+import { buildFilenameStem, sdsFilename } from "./sds-id";
 
-describe("buildDeterministicId", () => {
-  it("joins SUPPLIER-PRODUCT-ISSUEDATE, sanitised and uppercased", () => {
-    expect(buildDeterministicId("Recochem Inc", "Methylated Spirits", "2025-01-06")).toBe(
-      "RECOCHEM-INC-METHYLATED-SPIRITS-2025-01-06",
-    );
+describe("buildFilenameStem", () => {
+  it("cleans a product name to the permitted character set", () => {
+    expect(buildFilenameStem("Dulux Aquanamel Gloss Enamel")).toBe("Dulux-Aquanamel-Gloss-Enamel");
   });
 
   it("strips accents rather than dropping the letter entirely", () => {
-    expect(buildDeterministicId("Café Products", "Naïve Chemical", "2025-01-06")).toBe(
-      "CAFE-PRODUCTS-NAIVE-CHEMICAL-2025-01-06",
-    );
+    expect(buildFilenameStem("Café Naïve Cleaner")).toBe("Cafe-Naive-Cleaner");
   });
 
   it("replaces punctuation and collapses repeated separators to one hyphen", () => {
-    expect(buildDeterministicId("A.C.M.E,  Pty Ltd!!", "Bleach (5L)", "2025-01-06")).toBe(
-      "A-C-M-E-PTY-LTD-BLEACH-5L-2025-01-06",
-    );
+    expect(buildFilenameStem("Bleach (5L) & Degreaser!!")).toBe("Bleach-5L-Degreaser");
   });
 
-  it("fills placeholders for missing parts", () => {
-    expect(buildDeterministicId(null, "X", null)).toBe("UNKNOWN-X-NODATE");
+  it("caps at 40 characters and never ends in a hyphen", () => {
+    const longName = "Sodium ".repeat(30);
+    const stem = buildFilenameStem(longName);
+    expect(stem.length).toBeLessThanOrEqual(40);
+    expect(stem.endsWith("-")).toBe(false);
   });
 
-  it("caps the total length at 120 characters and never ends in a hyphen", () => {
-    const longProduct = "Sodium ".repeat(30);
-    const id = buildDeterministicId("Acme", longProduct, "2025-01-06");
-    expect(id.length).toBeLessThanOrEqual(120);
-    expect(id.endsWith("-")).toBe(false);
+  it("falls back to a placeholder for an empty or null product name", () => {
+    expect(buildFilenameStem(null)).toBe("SDS");
+    expect(buildFilenameStem("   ")).toBe("SDS");
   });
 });
 
 describe("sdsFilename", () => {
-  it("is the record id plus .pdf", () => {
-    expect(sdsFilename("RECOCHEM-INC-METHYLATED-SPIRITS-2025-01-06")).toBe(
-      "RECOCHEM-INC-METHYLATED-SPIRITS-2025-01-06.pdf",
-    );
+  it("joins the stem to the number parsed out of the record id", () => {
+    expect(sdsFilename("Aquanamel", "SDS-042")).toBe("Aquanamel-042");
+  });
+
+  it("preserves the zero-padded width from the record id", () => {
+    expect(sdsFilename("Aquanamel", "SDS-1024")).toBe("Aquanamel-1024");
+  });
+
+  it("never appends a .pdf extension - that's the caller's job", () => {
+    expect(sdsFilename("Aquanamel", "SDS-042")).not.toContain(".pdf");
   });
 });

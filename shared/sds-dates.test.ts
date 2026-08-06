@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   addFiveYears,
-  buildRecordId,
   computeCurrencyFlag,
   formatSdsDate,
   parseSdsDate,
@@ -54,14 +53,5 @@ describe("computeCurrencyFlag", () => {
   });
   it("is unconfirmed when no date is known", () => {
     expect(computeCurrencyFlag(null, null, today)).toBe("DATE_UNCONFIRMED");
-  });
-});
-
-describe("buildRecordId", () => {
-  it("builds SUPPLIER-PRODUCT-ISSUEDATE, sanitised and uppercased", () => {
-    expect(buildRecordId("Reckitt", "Mortein Outdoor", "2024-03-12")).toBe("RECKITT-MORTEIN-OUTDOOR-2024-03-12");
-  });
-  it("fills placeholders for missing parts", () => {
-    expect(buildRecordId(null, "X", null)).toBe("UNKNOWN-X-NODATE");
   });
 });

@@ -14,6 +14,7 @@ export async function saveReviewedRecord(
   extracted: ExtractedIndexRow,
   source: SDSSourceKind,
   verifiedBy: string,
+  filenameStem: string,
 ): Promise<SDSIndexRecord> {
   // Unique path so two products with the same filename never collide.
   const safeName = file.name.replace(/[^\w.-]+/g, "_");
@@ -28,7 +29,7 @@ export async function saveReviewedRecord(
 
   const { data: urlData } = supabase.storage.from("sds-pdfs").getPublicUrl(path);
 
-  const record = buildRecord(extracted, urlData.publicUrl, source, verifiedBy);
+  const record = buildRecord(extracted, urlData.publicUrl, source, verifiedBy, filenameStem);
 
   const { data: inserted, error: insertError } = await supabase
     .from("sds_index")

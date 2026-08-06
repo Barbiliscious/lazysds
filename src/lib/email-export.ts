@@ -1,5 +1,6 @@
 import type { SDSIndexRecord } from "@shared/types";
 import { isValidEmail } from "@shared/email";
+import { sdsFilename } from "@shared/sds-id";
 import { supabase } from "./supabase";
 import { buildBatchZip, type BatchItem } from "./download-batch";
 import { sendRegisterExportEmail } from "./api-client";
@@ -15,7 +16,20 @@ async function fetchPdfFile(record: SDSIndexRecord): Promise<File> {
     throw new Error(`Could not download the safety data sheet for ${record.record_id} (HTTP ${res.status}).`);
   }
   const blob = await res.blob();
-  return new File([blob], `${record.record_id}.pdf`, { type: "application/pdf" });
+  return new File([blob], `${sdsFilename(record.filename_stem, record.record_id)}.pdf`, { type: "application/pdf" });
+}
+
+/**
+ * A human-readable storage path for the zip, so the filename a recipient
+ * sees when they follow the emailed link (derived from the storage object's
+ * name) is meaningful rather than a bare UUID - while still unique enough
+ * to never collide with a previous export.
+ */
+function exportZipPath(recordCount: number): string {
+  const date = new Date().toISOString().slice(0, 10);
+  const noun = recordCount === 1 ? "record" : "records";
+  const shortId = crypto.randomUUID().slice(0, 8);
+  return `exports/sds-export-${date}-${recordCount}${noun}-${shortId}.zip`;
 }
 
 /**
@@ -37,7 +51,7 @@ export async function emailSelectedRecords(records: SDSIndexRecord[], to: string
   const items: BatchItem[] = records.map((record, i) => ({ record, file: files[i]! }));
   const zipBlob = await buildBatchZip(items);
 
-  const path = `exports/${crypto.randomUUID()}.zip`;
+  const path = exportZipPath(records.length);
   const { error: uploadError } = await supabase.storage
     .from("sds-pdfs")
     .upload(path, zipBlob, { contentType: "application/zip" });
