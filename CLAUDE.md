@@ -30,11 +30,21 @@ search, no barcode lookup) — they supply the PDF, the app reads it.
   live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
   ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.
 - **Region conventions:** Australia (GHS per Safe Work Australia, ADG classes)
-- **Email (optional):** `api/send-copy.ts` + `api/_lib/email.ts` email a
-  one-row spreadsheet copy plus the source PDF to `REGISTER_NOTIFY_EMAIL`
-  whenever a record is saved, via Resend's HTTP API (no SDK). Off entirely
-  when `RESEND_API_KEY` / `REGISTER_NOTIFY_EMAIL` aren't set — saving to the
-  register never depends on it.
+- **Email (optional):** `api/_lib/email.ts` sends via Resend's HTTP API (no
+  SDK), from the verified domain `notify@lazysds.com` (requires lazysds.com
+  to be verified in Resend - see `.env.example`). Two features share it:
+  `api/send-copy.ts` emails a one-row spreadsheet copy plus the source PDF
+  to the fixed `REGISTER_NOTIFY_EMAIL` whenever a record is saved. Off
+  entirely when `RESEND_API_KEY` / `REGISTER_NOTIFY_EMAIL` aren't set —
+  saving to the register never depends on it. `api/send-export.ts` backs
+  "Email selected records" on the register page: pick records, type any
+  recipient address, and a link to a zip of them (spreadsheet + PDFs,
+  uploaded to the `sds-pdfs` bucket under `exports/`) gets emailed there.
+  Needs only `RESEND_API_KEY`. Both the recipient address and the export
+  URL are validated server-side (`shared/email.ts`,
+  `api/_lib/export-link.ts`) — the URL check pins it to this project's own
+  storage path, since an unauthenticated public endpoint that could email
+  an arbitrary link to an arbitrary address would be an open spam relay.
 - **Export (SharePoint-ready):** every XLSX export (`src/lib/export-register.ts`)
   has two sheets. `Paste` is machine-clean and paste-ready for a SharePoint
   list's grid view — one header row, sanitised plain-text cells, no

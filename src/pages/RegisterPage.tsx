@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { SDSField, SDSIndexRecord } from "@shared/types";
 import { CURRENCY_DISPLAY, EXTRACTION_STATUS_DISPLAY, fieldCellText } from "@shared/sds-fields";
+import { isValidEmail } from "@shared/email";
 import { deleteRecord, fetchRegister } from "@/lib/register";
 import { downloadRegisterCsv, downloadRegisterXlsx } from "@/lib/export-register";
+import { emailSelectedRecords } from "@/lib/email-export";
 import QuickReferenceNotice from "@/components/QuickReferenceNotice";
 
 /**
@@ -23,6 +25,13 @@ export default function RegisterPage() {
   const [query, setQuery] = useState("");
   const [exportError, setExportError] = useState<string | null>(null);
   const [buildingXlsx, setBuildingXlsx] = useState(false);
+
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sendTo, setSendTo] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendSuccess, setSendSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRegister()
@@ -58,6 +67,40 @@ export default function RegisterPage() {
       setExportError("Could not build the Excel file. Try the CSV download instead.");
     } finally {
       setBuildingXlsx(false);
+    }
+  }
+
+  function toggleSelectMode() {
+    setSelectMode((prev) => !prev);
+    setSelectedIds(new Set());
+    setSendTo("");
+    setSendError(null);
+    setSendSuccess(null);
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleSend() {
+    setSendError(null);
+    setSendSuccess(null);
+    const selected = records.filter((r) => selectedIds.has(r.id));
+    setSending(true);
+    try {
+      await emailSelectedRecords(selected, sendTo);
+      setSendSuccess(`Sent ${selected.length === 1 ? "1 record" : `${selected.length} records`} to ${sendTo.trim()}.`);
+      setSelectedIds(new Set());
+      setSendTo("");
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Could not send that email. Try again.");
+    } finally {
+      setSending(false);
     }
   }
 
@@ -119,6 +162,13 @@ export default function RegisterPage() {
               >
                 {buildingXlsx ? "Building…" : "Download Excel"}
               </button>
+              <button
+                type="button"
+                onClick={toggleSelectMode}
+                className="rounded-xl bg-white px-5 py-3 font-semibold text-blue-700 border border-blue-600 hover:bg-blue-50"
+              >
+                {selectMode ? "Cancel emailing" : "Email selected records"}
+              </button>
               <span className="text-sm text-slate-500">
                 {records.length} {records.length === 1 ? "product" : "products"} in the register
               </span>
@@ -127,6 +177,43 @@ export default function RegisterPage() {
             {exportError && (
               <div role="alert" className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-800">
                 {exportError}
+              </div>
+            )}
+
+            {selectMode && (
+              <div className="mb-5 rounded-xl border border-blue-200 bg-blue-50 p-4">
+                <p className="mb-3 font-medium text-slate-800">
+                  Tap the products below to pick which ones to email, then enter where to send them.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <input
+                    type="email"
+                    inputMode="email"
+                    aria-label="Email address to send the selected records to"
+                    placeholder="recipient@example.com"
+                    className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white p-3 text-lg"
+                    value={sendTo}
+                    onChange={(e) => setSendTo(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    disabled={sending || selectedIds.size === 0 || !isValidEmail(sendTo)}
+                    onClick={() => void handleSend()}
+                    className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                  >
+                    {sending ? "Sending…" : `Send ${selectedIds.size || ""} selected`}
+                  </button>
+                </div>
+                {sendError && (
+                  <div role="alert" className="mt-3 rounded-lg bg-red-100 border border-red-200 px-3 py-2 text-red-800">
+                    {sendError}
+                  </div>
+                )}
+                {sendSuccess && (
+                  <div role="status" className="mt-3 rounded-lg bg-green-100 border border-green-200 px-3 py-2 text-green-800">
+                    {sendSuccess}
+                  </div>
+                )}
               </div>
             )}
 
@@ -144,7 +231,14 @@ export default function RegisterPage() {
             ) : (
               <ul className="flex flex-col gap-3">
                 {visible.map((record) => (
-                  <RecordCard key={record.id} record={record} onDeleted={handleDeleted} />
+                  <RecordCard
+                    key={record.id}
+                    record={record}
+                    onDeleted={handleDeleted}
+                    selectable={selectMode}
+                    selected={selectedIds.has(record.id)}
+                    onToggleSelect={() => toggleSelected(record.id)}
+                  />
                 ))}
               </ul>
             )}
@@ -155,7 +249,19 @@ export default function RegisterPage() {
   );
 }
 
-function RecordCard({ record, onDeleted }: { record: SDSIndexRecord; onDeleted: (id: string) => void }) {
+function RecordCard({
+  record,
+  onDeleted,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: {
+  record: SDSIndexRecord;
+  onDeleted: (id: string) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const e = record.extracted;
   const organisation = e.manufacturer_supplier_importer.value;
   const [confirming, setConfirming] = useState(false);
@@ -175,11 +281,28 @@ function RecordCard({ record, onDeleted }: { record: SDSIndexRecord; onDeleted: 
   }
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <li
+      className={`rounded-xl border bg-white p-4 shadow-sm ${selected ? "border-blue-500 ring-2 ring-blue-200" : "border-slate-200"}`}
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h2 className="text-lg font-semibold text-slate-800">
-          {e.product_name.value ?? <span className="italic text-slate-400">Product name not stated</span>}
-        </h2>
+        <div className="flex items-start gap-3">
+          {selectable && (
+            <label className="flex cursor-pointer items-center py-1 pr-1">
+              <span className="sr-only">
+                {e.product_name.value ?? "Select this record"}
+              </span>
+              <input
+                type="checkbox"
+                className="h-6 w-6 rounded border-slate-400 text-blue-600"
+                checked={selected}
+                onChange={onToggleSelect}
+              />
+            </label>
+          )}
+          <h2 className="text-lg font-semibold text-slate-800">
+            {e.product_name.value ?? <span className="italic text-slate-400">Product name not stated</span>}
+          </h2>
+        </div>
         <SignalWordBadge field={e.signal_word} />
       </div>
 

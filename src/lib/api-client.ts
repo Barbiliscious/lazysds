@@ -66,3 +66,17 @@ export async function sendRegisterCopyEmail(payload: {
 }): Promise<{ ok: boolean; skipped?: boolean }> {
   return postJson<{ ok: boolean; skipped?: boolean }>("/api/send-copy", payload);
 }
+
+/**
+ * Emails a link to a just-built register export (spreadsheet + PDFs, zipped
+ * and already uploaded to storage) to an address typed in at send time.
+ * `skipped: true` means RESEND_API_KEY isn't set server-side - not an
+ * error, the feature is just off.
+ */
+export async function sendRegisterExportEmail(payload: {
+  to: string;
+  url: string;
+  recordCount: number;
+}): Promise<{ ok: boolean; skipped?: boolean }> {
+  return postJson<{ ok: boolean; skipped?: boolean }>("/api/send-export", payload);
+}

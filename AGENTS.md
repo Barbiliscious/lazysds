@@ -22,9 +22,15 @@ does not search for or locate an SDS on the worker's behalf.
   live at https://lazysds.vercel.app. Deploy with `npx vercel --prod`.
   ⚠ TypeScript is pinned to 5.x: Vercel's function builder crashes on TS 7.
 - **Region conventions:** Australia (GHS per Safe Work Australia, ADG classes)
-- **Email (optional):** `api/send-copy.ts` emails a one-row spreadsheet copy
-  plus the source PDF to `REGISTER_NOTIFY_EMAIL` on save, via Resend. Off
-  when `RESEND_API_KEY` / `REGISTER_NOTIFY_EMAIL` aren't set.
+- **Email (optional):** `api/_lib/email.ts` sends via Resend from the
+  verified domain `notify@lazysds.com`. `api/send-copy.ts` emails a one-row
+  spreadsheet copy plus the source PDF to `REGISTER_NOTIFY_EMAIL` on save;
+  off when `RESEND_API_KEY` / `REGISTER_NOTIFY_EMAIL` aren't set.
+  `api/send-export.ts` backs "Email selected records" on the register page
+  - any recipient, typed per send - by emailing a link to a zip in storage;
+  needs only `RESEND_API_KEY`. Recipient + link are validated server-side
+  (the link must point at this project's own storage) so the public,
+  unauthenticated endpoint can't become an open spam relay.
 - **Export (SharePoint-ready):** XLSX exports have a paste-ready `Paste`
   sheet (plain text, no formatting) plus a `Read Me` sheet for the
   disclaimer/docs. `SDS Filename` = `<SDS Record ID>.pdf` (shared
