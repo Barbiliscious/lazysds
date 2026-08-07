@@ -18,6 +18,9 @@ describe("parseSectionHeading", () => {
     expect(parseSectionHeading("2 – Hazards Identification")).toBe(2);
     expect(parseSectionHeading("14 – Transportation Information")).toBe(14);
   });
+  it("recognises 'Material and Supply Company Identification', another common section 1 title", () => {
+    expect(parseSectionHeading("1. MATERIAL AND SUPPLY COMPANY IDENTIFICATION")).toBe(1);
+  });
   it("ignores non-headings and out-of-range numbers", () => {
     expect(parseSectionHeading("1.2 Product identifier")).toBeNull();
     expect(parseSectionHeading("2.2 Label elements")).toBeNull();

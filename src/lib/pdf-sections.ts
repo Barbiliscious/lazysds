@@ -56,12 +56,13 @@ const NUMBERED_RE = /^(\d{1,2})\s*[.):–—-]?\s*(.+)$/;
 /**
  * The GHS 16-section titles (first significant word). Used to recognise
  * "1. Identification" style headings without mistaking ordinary numbered
- * lines ("5 litres of water") for a section heading. "chemical" covers the
- * older pre-2012 title for section 1, "Chemical Product and Company
- * Identification", still common on legacy SDS templates.
+ * lines ("5 litres of water") for a section heading. "chemical" and
+ * "material" both cover older pre-2012 titles for section 1 - "Chemical
+ * Product and Company Identification" and "Material and Supply Company
+ * Identification" - still common on legacy SDS templates.
  */
 const GHS_TITLE_WORDS =
-  /^(identification|chemical|hazard|composition|first[-\s]?aid|fire[-\s]?fighting|fire|accidental|handling|exposure|physical|stability|toxicolog|ecolog|disposal|transport|regulat|other)/i;
+  /^(identification|chemical|material|hazard|composition|first[-\s]?aid|fire[-\s]?fighting|fire|accidental|handling|exposure|physical|stability|toxicolog|ecolog|disposal|transport|regulat|other)/i;
 
 function inRange(raw: string): number | null {
   const n = Number.parseInt(raw, 10);
